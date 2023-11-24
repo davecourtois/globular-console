@@ -9,9 +9,5 @@ code.hljs{
 }
 
 ::slotted([slot="app-side-menu"]) {
-    /* Styles for the content inside the "app-side-menu" slot */
-    /* Add your specific styles here */
-    /*background-color: #f0f0f0;*/
-    padding: 10px;
-    border-right: 1px solid #ddd;
+
   }

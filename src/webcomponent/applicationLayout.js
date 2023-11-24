@@ -9,10 +9,6 @@ import '@polymer/app-layout/app-toolbar/app-toolbar.js';
 import '@polymer/iron-collapse/iron-collapse.js';
 import '@polymer/paper-ripple/paper-ripple.js';
 
-// This is the backend
-import '../controllers/Backend'
-import { Backend } from '../controllers/Backend';
-import { Application } from '../models/Application';
 
 // Create a class for the element
 export class AppLayout extends HTMLElement {
@@ -54,7 +50,12 @@ export class AppLayout extends HTMLElement {
 
     // Get the application name and url.
     const applicationName = this.getAttribute('application-name') || 'Default Application Name';
-    const applicationURL = this.getAttribute('application-url') || '';
+    document.title = applicationName
+
+    // Set the application name.
+
+
+    //document.querySelector("meta[name='application-name']").setAttribute("content", applicationName);
 
     // Initialization of the layout.
     this.shadowRoot.innerHTML = `
@@ -117,7 +118,9 @@ export class AppLayout extends HTMLElement {
             effects="waterfall">
             <app-toolbar>
               <paper-icon-button icon="menu" drawer-toggle></paper-icon-button>
+             
               <div id="toolbar" style="display: flex;">
+                <slot name="app-logo"></slot>
                 <div id="main-title">
                   <slot name="app-title"></slot>
                 </div>
@@ -136,25 +139,13 @@ export class AppLayout extends HTMLElement {
       </app-drawer-layout>
     `
 
-    // Create the application.
-    new Application(applicationName, applicationURL, () => {
-      // Subscribe to the application info event.
-      Backend.eventHub.subscribe('application_info_evt',
-        (uuid) => { },
-        applicationInfo => {
 
-          // Set the icon, alias and version from the applaication.
-          this.querySelector("globular-sidebar").setHeaderIcon(applicationInfo.getIcon())
-          this.querySelector("globular-sidebar").setHeaderTitle(applicationInfo.getAlias())
-          this.querySelector("globular-sidebar").setHeaderSubtitle(`v${applicationInfo.getVersion()}`)
+    // Set the icon, alias and version from the applaication.
+    //this.querySelector("globular-sidebar").setHeaderIcon(applicationInfo.getIcon())
 
-          // Dispatch the loaded event.
-          const event = new Event('loaded', { bubbles: true, composed: true });
-          this.dispatchEvent(event);
 
-        }, true)
-    }, err => console.log(err));
   }
+
 
 }
 
@@ -249,10 +240,14 @@ export class SideBar extends HTMLElement {
         <div id="sidebar_main">
             <div class="sidebar_main_header" >
               <div class="sidebar_logo">
-                <img id="logo"/>
-                <div style="display: flex; flex-direction: column;">
-                  <span id="title">Application Name</span>
-                  <span id="subtitle">Subtitle</span>
+                <slot name="header-logo"></slot>
+                <div style="display: flex; flex-direction: column; padding-top:10px; padding-left:10px;">
+                  <span id="title">
+                    <slot name="header-title"></slot>
+                  </span>
+                  <span id="subtitle">
+                    <slot name="header-subtitle"></slot>
+                  </span>
                 </div>
               </div>
             </div>

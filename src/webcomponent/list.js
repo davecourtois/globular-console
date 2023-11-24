@@ -70,9 +70,7 @@ export class EditableStringList extends HTMLElement {
         }
 
         list.forEach(item => {
-
             this.addItem(item, stringListDiv, range)
-
         })
     }
 

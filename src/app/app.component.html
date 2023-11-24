@@ -1,13 +1,18 @@
-<globular-app-layout  (loaded)="onComponentLoaded($event)" application-name="globular-console" application-url="https://globule-ryzen.globular.cloud/config">
+<globular-app-layout (loaded)="onComponentLoaded($event)" application-name="globular-console">
   <div slot="app-side-menu">
     <globular-sidebar header-background-image="assets/images/sidebar_head_bg.png">
+      <img slot="header-logo" src="assets/images/logo.png" alt="logo" style="width: 64px;" />
+      <span slot="header-title">Cloud Console</span>
+      <span slot="header-subtitle">cluster manager</span>
       <globular-sidebar-menu>
         <globular-sidebar-menu-item icon="fa fa-home" routerLink="/home" text="Home"></globular-sidebar-menu-item>
-        <globular-sidebar-menu-item icon="fa fa-cog" routerLink="/settings" text="Settings"></globular-sidebar-menu-item>
+        <globular-sidebar-menu-item icon="fa fa-cog" routerLink="/settings"
+          text="Settings"></globular-sidebar-menu-item>
       </globular-sidebar-menu>
     </globular-sidebar>
   </div>
   <div slot="app-title"></div>
+
   <div slot="contextual-action-bar">Menu</div>
   <div slot="app-content" style="height: calc(100vh - 80px); overflow-y: auto;">
     <div class="container">

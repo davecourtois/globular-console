@@ -78,7 +78,7 @@ export class Markdown extends HTMLElement {
      <div id="content">
      </div>
       <slot></slot>
-    
+      <slot name="test"></slot>
      `
 
     let content = this.shadowRoot.querySelector('#content')
@@ -89,8 +89,6 @@ export class Markdown extends HTMLElement {
     const slot = this.shadowRoot.querySelector('slot');
 
     slot.addEventListener('slotchange', () => {
-
-   
       const assignedNodes = slot.assignedNodes();
 
       let code = ""

@@ -1,19 +1,20 @@
 import { Component } from '@angular/core';
-import '../controllers/Backend'
-import '../controllers/File'
-import '../controllers/Title'
 import '../webcomponent/applicationLayout'
+import '../webcomponent/markdown'
 import '../webcomponent/themeEditor'
-import '../webcomponent/application'
 import '../webcomponent/menu'
 import '../webcomponent/dialog'
+import '../webcomponent/networkAddressManager'
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
+
 export class AppComponent {
+
+  
 
   // wait until the web component is loaded
   componentLoaded:boolean = false;
