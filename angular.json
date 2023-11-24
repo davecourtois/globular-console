@@ -29,7 +29,8 @@
               "src/styles.css",
               "src/webcomponent/style.css",
               "node_modules/font-awesome/css/font-awesome.css",
-              "highlight.js/styles/github.css"
+              "highlight.js/styles/github.css",
+              "toastify-js/src/toastify.css"
             ],
             "scripts": []
           },

@@ -4,7 +4,7 @@ import '../webcomponent/markdown'
 import '../webcomponent/themeEditor'
 import '../webcomponent/menu'
 import '../webcomponent/dialog'
-import '../webcomponent/networkAddressManager'
+import '../webcomponent/network'
 
 @Component({
   selector: 'app-root',

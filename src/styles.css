@@ -1,13 +1,9 @@
-
-
-body{
+body {
     overflow: hidden;
 }
 
-code.hljs{
+code.hljs {
     background-color: #fafafa;
 }
 
-::slotted([slot="app-side-menu"]) {
-
-  }
+::slotted([slot="app-side-menu"]) {}

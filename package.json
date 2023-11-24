@@ -36,12 +36,17 @@
     "@polymer/paper-spinner": "^3.0.2",
     "@polymer/paper-tooltip": "^3.0.1",
     "@polymer/polymer": "^3.5.1",
+    "@polymer/paper-tabs": "^3.1.0",
     "globular-web-client": "^1.1.356",
     "jwt-decode": "^3.1.2",
     "rxjs": "~7.8.0",
+    "toastify-js": "^1.12.0",
     "tslib": "^2.3.0",
     "uuid-by-string": "^4.0.0",
-    "zone.js": "~0.13.0"
+    "zone.js": "~0.13.0",
+    "chart.js": "^4.4.0",
+    "jmespath": "^0.16.0",
+    "jmespath-edit": "^0.3.2"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^16.1.6",

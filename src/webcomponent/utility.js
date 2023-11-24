@@ -1,3 +1,6 @@
+import Toastify from 'toastify-js';
+
+
 export function secondsToTime(secs) {
     var hours = Math.floor(secs / (60 * 60));
 
@@ -258,5 +261,73 @@ export function formatDateTimeCustom(dateTime, format) {
         .replace('ss', seconds);
 
     return formattedDateTime;
+}
+
+/**
+ * Display an error message to the user
+ * @param {*} err 
+ */
+export function displayError(err) {
+
+    // Create a custom DOM element for the notification content
+    // Create a container element with an error icon and text
+    const errorContainer = document.createElement('div');
+    errorContainer.innerHTML = `
+<i class="fa fa-exclamation-triangle" style="color: var(--error-color);"></i>
+<span>${err}</span>
+`;
+
+    // Example notification with an error icon using the node option
+    const errorNotification = Toastify({
+        node: errorContainer, // Use the custom DOM element
+        text: 'This is an error message!',
+        duration: 3000,
+        close: true,
+        gravity: 'top',
+        style: {
+            background: 'var(--surface-color)',
+            borderRadius: '.25rem',
+            fontFamily: 'Roboto',
+            fontSize: '1.1rem',
+            color: 'var(--on-surface-color)',
+        },
+    });
+
+    // Show the notification
+    errorNotification.showToast();
+}
+
+/**
+ * Display a success message to the user
+ * @param {*} msg 
+ */
+export function displaySuccess(msg) {
+
+    // Create a custom DOM element for the notification content
+    // Create a container element with an error icon and text
+    const msgContainer = document.createElement('div');
+    msgContainer.innerHTML = `
+<i class="fa fa-check-circle" style="color: var(--success-color);"></i>
+<span>${msg}</span>
+`;
+
+    // Example notification with an error icon using the node option
+    const successNotification = Toastify({
+        node: msgContainer, // Use the custom DOM element
+        text: 'This is an error message!',
+        duration: 3000,
+        close: true,
+        gravity: 'top',
+        style: {
+            background: 'var(--surface-color)',
+            borderRadius: '.25rem',
+            fontFamily: 'Roboto',
+            fontSize: '1.1rem',
+            color: 'var(--on-surface-color)',
+        },
+    });
+
+    // Show the notification
+    successNotification.showToast();
 }
 
