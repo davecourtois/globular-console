@@ -15,10 +15,10 @@ import { displayError, displaySuccess } from './utility';
 
 let scanFct = (row) => {
 
-    const waitSpinner = row.querySelector('#wait-spinner')
+    const waitSpinner = row.querySelector('paper-spinner')
     const input = row.querySelector('input')
     const address = input.value
-    const refreshBtn = row.querySelector('#refresh-btn')
+    const refreshBtn = row.querySelector(`#${row.id}-refresh-btn`)
 
     waitSpinner.active = true
     waitSpinner.style.display = "block"
@@ -171,7 +171,7 @@ export class NetworkAddressManager extends HTMLElement {
         <div id="content">
             <div style="display: flex; flex-direction: row; width: 100%; align-items: center;">
                 <paper-icon-button id="add-item-btn" icon="icons:add"></paper-icon-button>
-                <span class="label">Add new Address</span>
+                <span class="label">Enter the network addresses to scan for host's</span>
                 <paper-icon-button id="info-btn" icon="icons:info-outline"></paper-icon-button>
             </div>
 
@@ -204,9 +204,9 @@ export class NetworkAddressManager extends HTMLElement {
         <div id="${id}" class="address-row">
             <label>Address</label>
             <input label="Address"></input>
-            <paper-icon-button id="refresh-btn" icon="icons:refresh"></paper-icon-button>
-            <paper-spinner id="wait-spinner" ></paper-spinner>
-            <paper-icon-button id="delete-btn" icon="icons:delete"></paper-icon-button>
+            <paper-icon-button id="${id}-refresh-btn" icon="icons:refresh"></paper-icon-button>
+            <paper-spinner id="${id}-wait-spinner" ></paper-spinner>
+            <paper-icon-button id="${id}-delete-btn" icon="icons:delete"></paper-icon-button>
         </div>
         `
         const addressList = this.shadowRoot.querySelector('#address-list')
@@ -217,7 +217,7 @@ export class NetworkAddressManager extends HTMLElement {
         }
         const input = addressList.querySelector('input')
 
-        const refreshBtn = addressList.querySelector('#refresh-btn')
+        const refreshBtn = addressList.querySelector(`#${id}-refresh-btn`)
 
         row = addressList.querySelector('#' + id)
 
@@ -233,7 +233,7 @@ export class NetworkAddressManager extends HTMLElement {
             }
         })
 
-        const deleteBtn = addressList.querySelector('#delete-btn')
+        const deleteBtn = addressList.querySelector(`#${id}-delete-btn`)
         deleteBtn.addEventListener('click', () => {
             console.log("Delete")
         })
@@ -306,7 +306,7 @@ export class GlobulesManager extends HTMLElement {
 
         <div id="content">
             <div style="display: flex; flex-direction: row; width: 100%; align-items: center;">
-                <span id="title">Hosts</span>
+                <span id="title">List of Hosts or Devices Found</span>
                 <paper-icon-button id="info-btn" icon="icons:info-outline"></paper-icon-button>
             </div>
             <div id="hosts">

@@ -9,7 +9,7 @@ import { GetProcessInfosRequest, KillProcessRequest } from "globular-web-client/
 import { v4 as uuidv4 } from "uuid";
 import { Menu } from '../webcomponent/menu.js'
 import { Chart, registerables } from 'chart.js';
-import { displayError } from "./utility.js";
+import { displayAuthentication, displayError, displaySuccess } from "./utility.js";
 import { Dialog } from "./dialog"
 
 Chart.register(...registerables);
@@ -824,17 +824,35 @@ export class ProcessesManager extends HTMLElement {
                         let rqst = new KillProcessRequest
                         rqst.setPid(info.getPid())
 
-                        if(localStorage.getItem("user_token") == null){
-                            displayError("You must be logged in to kill a process.")
+                        // Check if the user is logged as sa...
+                        if(this.globule.token == null){
+                            displayAuthentication(`You must be logged as <span style="font-style: italic;">sa</span> to kill a process.`, this.globule, 
+                                ()=>{
+                                    // Here I will kill the process...
+                                    this.globule.adminService.killProcess(rqst, { domain: this.globule.config.Domain, token: this.globule.token })
+                                    .then(rsp => {
+                                        // remove the process.
+                                        processRow.parentNode.removeChild(processRow)
+
+                                        // Here I will display a message...
+                                        displaySuccess(`Process ${info.getName()}(${info.getId()}) killed.`)
+                                    })
+                                    .catch(err => {displayError(err); this.globule.token = null})
+                                }, ()=>{
+
+                                })
                             return
                         }
 
-                        this.globule.adminService.killProcess(rqst, { domain: this.globule.config.Domain, token: localStorage.getItem("user_token") })
+                        this.globule.adminService.killProcess(rqst, { domain: this.globule.config.Domain, token: this.globule.token })
                             .then(rsp => {
                                 // remove the process.
                                 processRow.parentNode.removeChild(processRow)
+
+                                // Here I will display a message...
+                                displayMessage(`Process ${info.getName()}(${info.getId()}) killed.`, this.globule)
                             })
-                            .catch(err => displayError(err))
+                            .catch(err => {displayError(err); this.globule.token = null})
                     }
                 } else {
                     // Here I will update the value of the cpu usage and memory usage.

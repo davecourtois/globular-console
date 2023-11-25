@@ -1,3 +1,4 @@
+import { AuthenticateRqst } from 'globular-web-client/authentication/authentication_pb';
 import Toastify from 'toastify-js';
 
 
@@ -261,6 +262,145 @@ export function formatDateTimeCustom(dateTime, format) {
         .replace('ss', seconds);
 
     return formattedDateTime;
+}
+
+
+// Authenticate the 'sa' user on the globule...
+function authenticateSa(globule, password, callback, errorCallback) {
+    let rqst = new AuthenticateRqst();
+    rqst.setName('sa');
+    rqst.setIssuer(globule.config.Mac)
+    rqst.setPassword(password);
+
+    globule.authenticationService.authenticate(rqst, {}).then((response) => {
+        // Set the token
+        globule.token = response.getToken();
+        // Call the callback
+        callback(response);
+    })
+
+        .catch((err) => {
+            errorCallback(err);
+        });
+}
+
+/**
+ * This function display authentication error and prompt the user to login. 
+ * @param {*} err 
+ */
+export function displayAuthentication(err, globule, successCallback, errorCallback) {
+
+    // Create a custom DOM element for the notification content
+    // Create a container element with an error icon and text
+    const container = document.createElement('div');
+    container.innerHTML = `
+<div id="authentication-message" style="display: flex; flex-direction: column;">
+    <div style="display: flex; align-items: center;">
+        <i class="fa fa-exclamation-triangle" style="color: var(--error-color); margin-right: 5px;"></i>
+        <span>${err}</span>
+    </div>
+    <div id="admin-login">
+        <paper-input
+            label="Password"
+            type="password"
+            id="sa-password-input"
+        >
+            <iron-icon icon="lock" slot="suffix" class="icon"></iron-icon>
+        </paper-input>
+    </div>
+    <div style="display: flex; justify-content: end;">
+        <paper-button --paper-button-flat style="font-size: .8rem; height: 24px;" id="sa-login-button" raised>Login</paper-button>
+        <paper-button --paper-button-flat style="font-size: .8rem; height: 24px;" id="sa-cancel-button" raised>Cancel</paper-button>
+    </div>
+</div>
+`;
+
+    let autenticationMsg = document.getElementById('authentication-message');
+
+    // Check if the authentication message is already displayed
+    if (autenticationMsg != null) {
+        return;
+    }
+
+
+    // Example notification with an error icon using the node option
+    const authentication = Toastify({
+        node: container, // Use the custom DOM element
+        close: false,
+        duration: 0, // Set duration to 0 to prevent auto-hide
+        gravity: 'top',
+        style: {
+            background: 'var(--surface-color)',
+            borderRadius: '.25rem',
+            fontFamily: 'Roboto',
+            fontSize: '1.1rem',
+            color: 'var(--on-surface-color)',
+        },
+    });
+
+
+    // Show the notification
+    authentication.showToast();
+
+    // Focus on the password input
+    autenticationMsg = document.getElementById('authentication-message');
+    let passwordInput = autenticationMsg.querySelector('#sa-password-input');
+
+    // Add event listener to the password input
+    passwordInput.addEventListener('keyup', (e) => {
+        if (e.keyCode === 13) {
+            // Cancel the event
+            e.preventDefault();
+
+            // Here I will log the user...
+            authenticateSa(globule, passwordInput.value, (response) => {
+                // Remove the authentication message
+                authentication.hideToast();
+                // Display the success message
+                displaySuccess('Authentication successful!');
+
+                // Call the success callback
+                successCallback();
+
+            }, (err) => {
+                // Display the error message
+                displayError(err);
+            });
+        }
+    });
+
+    // Add event listener to the login button
+    let loginButton = autenticationMsg.querySelector('#sa-login-button');
+    loginButton.addEventListener('click', (e) => {
+        // Cancel the event
+        e.preventDefault();
+
+        // Here I will log the user...
+        authenticateSa(globule, passwordInput.value, (response) => {
+            // Remove the authentication message
+            authentication.hideToast();
+            // Display the success message
+            displaySuccess('Authentication successful!');
+
+            // Call the success callback
+            successCallback();
+
+        }, (err) => {
+            // Display the error message
+            displayError(err);
+        });
+    });
+
+    // Add event listener to the cancel button
+    let cancelButton = autenticationMsg.querySelector('#sa-cancel-button');
+    cancelButton.addEventListener('click', (e) => {
+        // Cancel the event
+        e.preventDefault();
+
+        // Remove the authentication message
+        authentication.hideToast();
+    });
+
 }
 
 /**
