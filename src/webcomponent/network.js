@@ -8,6 +8,7 @@ import '@polymer/iron-icons/communication-icons'
 import '@polymer/iron-icons/editor-icons'
 import "@polymer/paper-spinner/paper-spinner.js";
 import {SystemMonitor} from  "./systemMonitor.js"
+import {ConfigurationManager} from  "./configuration.js"
 
 import { Globular } from 'globular-web-client';
 import { getAvailableHostsRequest } from 'globular-web-client/admin/admin_pb';
@@ -391,10 +392,7 @@ export class HostPanel extends HTMLElement {
             }
 
             #info-btn {
-                position: absolute;
-                top: 0px;
-                right: 0px;
-                color: var(--primary-color);
+ 
             }
 
             #content img {
@@ -402,12 +400,28 @@ export class HostPanel extends HTMLElement {
                 height: 64px;
             }
 
+            #actions {
+                width: 100%;
+                display: flex;
+                flex-direction: row;
+                justify-content: flex-end;
+                width: 100%;
+                position: absolute;
+                top: 0px;
+                right: 0px;
+                color: var(--primary-color);
+            }
+
 
         </style>
 
         <div id="container">
             <div id="content">
-                <paper-icon-button id="info-btn" icon="icons:info-outline"  style="align-self: flex-start;"></paper-icon-button> 
+                <div id="actions">
+                    <paper-icon-button id="settings-btn" icon="icons:settings"  style="align-self: flex-start;"></paper-icon-button>
+                    <span style="flex-grow: 1;"></span>
+                    <paper-icon-button id="info-btn" icon="icons:info-outline"  style="align-self: flex-start;"></paper-icon-button> 
+                </div>
                 <div style="display: flex; flex-direction: column; width: 100%; align-items: center;">
                     <div style="position: relative;"> 
                         <img id="connection-status" src="./assets/icons/disconnected.svg" alt="connection status" style="position: absolute; top: 20px; right: -24px; height: 24px; width: 24px;">
@@ -432,7 +446,7 @@ export class HostPanel extends HTMLElement {
         let hostname = host.getName().split(":")[0]
         if (hostname.length == 0) {
             hostname = "unknown"
-            this.shadowRoot.querySelector("#info-btn").style.display = "none"
+            this.shadowRoot.querySelector("#actions").style.display = "none"
         } else {
             // In that case i will try to connect to the globule... 
             // I will set the connection status.
@@ -442,7 +456,9 @@ export class HostPanel extends HTMLElement {
                 this.shadowRoot.querySelector("#connection-status").src = "./assets/icons/connected.svg"
 
                 // I will display the info button.
-                this.shadowRoot.querySelector("#info-btn").style.display = ""
+                this.shadowRoot.querySelector("#actions").style.display = ""
+
+                // The system info button.
                 this.shadowRoot.querySelector("#info-btn").addEventListener('click', () => {
                     let id = "_" + this.globule.config.Mac.replace(/:/g, "-") + "-system-info"
                     
@@ -458,12 +474,28 @@ export class HostPanel extends HTMLElement {
                     document.body.appendChild(systemInfo)
                 })
 
+                // The configuration button.
+                this.shadowRoot.querySelector("#settings-btn").addEventListener('click', () => {
+                    let id = "_" + this.globule.config.Mac.replace(/:/g, "-") + "-settings"
+                    
+                    // will do nothing if the system monitor is already displayed.
+                    if(document.body.querySelector("#" + id)) {
+                        return
+                    }
+
+                    // Here I will display system informations...
+                    let configuration = new ConfigurationManager(this.globule)
+                    configuration.id = id
+
+                    document.body.appendChild(configuration)
+                })  
+
             }, (err) => {
                 // I will set the connection status.
                 this.shadowRoot.querySelector("#connection-status").src = "./assets/icons/disconnected.svg"
 
                 // I will hide the info button.
-                this.shadowRoot.querySelector("#info-btn").style.display = "none"
+                this.shadowRoot.querySelector("#actions").style.display = "none"
                
             })
         }
@@ -479,48 +511,3 @@ export class HostPanel extends HTMLElement {
 customElements.define('globular-host-panel', HostPanel)
 
 
-/**
- * This class will display the globule manager panel.
- */
-export class GlobuleManager extends HTMLElement {
-    // attributes.
-
-    // Create the applicaiton view.
-    constructor() {
-        super()
-        // Set the shadow dom.
-        this.attachShadow({ mode: 'open' });
-    }
-
-    // The connection callback.
-    connectedCallback() {
-
-        // Innitialisation of the layout.
-        this.shadowRoot.innerHTML = `
-        <style>
-           
-        #container {
-            background-color: var(--surface-color);
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin: 1rem;
-            flex-direction: column;
-            position: relative;
-        }
-
-        </style>
-        <div id="container">
-        </div>
-        `
-        // give the focus to the input.
-        let container = this.shadowRoot.querySelector("#container")
-
-    }
-
-    // Call search event.
-    setGlobule(globule) {
-
-    }
-}
-
-customElements.define('globular-globule-manager', GlobuleManager)

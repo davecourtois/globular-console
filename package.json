@@ -5,7 +5,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build -c development && /home/dave/Documents/globulario/Globular/Globular deploy -u=sa -p=adminadmin -name=globular_console -a=globule-ryzen.globular.cloud:443 -path=dist",
+    "build": "ng build && /home/dave/Documents/globulario/Globular/Globular deploy -u=sa -p=adminadmin -name=globular-console -a=globule-ryzen.globular.cloud:443 -path=dist",
     "watch": "ng build --watch --configuration development ",
     "test": "ng test"
   },

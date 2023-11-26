@@ -835,7 +835,7 @@ export class ProcessesManager extends HTMLElement {
                                         processRow.parentNode.removeChild(processRow)
 
                                         // Here I will display a message...
-                                        displaySuccess(`Process ${info.getName()}(${info.getId()}) killed.`)
+                                        displaySuccess(`Process ${info.getName()}(${info.getPid()}) killed.`)
                                     })
                                     .catch(err => {displayError(err); this.globule.token = null})
                                 }, ()=>{
@@ -850,7 +850,7 @@ export class ProcessesManager extends HTMLElement {
                                 processRow.parentNode.removeChild(processRow)
 
                                 // Here I will display a message...
-                                displayMessage(`Process ${info.getName()}(${info.getId()}) killed.`, this.globule)
+                                displaySuccess(`Process ${info.getName()}(${info.getPid()}) killed.`, this.globule)
                             })
                             .catch(err => {displayError(err); this.globule.token = null})
                     }
