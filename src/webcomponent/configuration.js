@@ -1,3 +1,6 @@
+import { ClusterConfigurationManager } from "./cluster_configuation.js";
+import { GeneralConfigurationManager } from "./general_configuration.js"
+
 /**
  * This class will display the globule manager panel.
  */
@@ -197,7 +200,8 @@ export class ConfigurationManager extends HTMLElement {
       }
 
       // Now the various manangers...
-      this.general = new GeneralConfigurationManager(this.globule)
+      this.generalConfigurationManager = new GeneralConfigurationManager(this.globule)
+      this.clusterConfigurationManager = new ClusterConfigurationManager(this.globule)
 
       // I will add the manager to the slot depending on the selected item.
       this.list = this.shadowRoot.querySelector("#list")
@@ -213,7 +217,11 @@ export class ConfigurationManager extends HTMLElement {
             switch (text) {
                case "General":
                   // add the general manager.
-                  this.appendChild(this.general)
+                  this.appendChild(this.generalConfigurationManager)
+                  break;
+               case "Cluster":
+                  // add the cluster manager.
+                  this.appendChild(this.clusterConfigurationManager)
                   break;
                default:
                   break;
@@ -271,65 +279,3 @@ export class ConfigurationManager extends HTMLElement {
 }
 
 customElements.define('globular-globule-manager', ConfigurationManager)
-
-
-
-/**
- * This will be use to manage the general configuration of a given globule.
- */
-export class GeneralConfigurationManager extends HTMLElement {
-   // attributes.
-
-   // Create the applicaiton view.
-   constructor(globule) {
-      super()
-      // Set the shadow dom.
-      this.attachShadow({ mode: 'open' });
-
-      // Set the globule.
-      this.globule = globule
-
-      // Innitialisation of the layout.
-      this.shadowRoot.innerHTML = `
-        <style>
-           
-            #container{
-                background-color: var(--background-color);
-                color: var(--palette-text-primary);
-            }
-        </style>
-        <div id="container">
-            <div id="title">
-                <span>General</span>
-            </div>
-        </div>
-        `
-      // give the focus to the input.
-      let container = this.shadowRoot.querySelector("#container")
-      let url = "https://globule-ryzen.globular.cloud/log_metrics"
-
-      // now i will fetch the data as plain text.
-      fetch(url)
-         .then((response) => {
-            return response.text()
-         })
-         .then((data) => {
-            console.log(data)
-         })
-         .catch((error) => {
-            console.log(error)
-         })
-  
-
-   }
-
-   // The connection callback.
-   connectedCallback() {
-
-   }
-
-   
-
-}
-
-customElements.define('globular-general-configuration-manager', GeneralConfigurationManager)

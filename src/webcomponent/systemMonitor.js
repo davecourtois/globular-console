@@ -11,6 +11,7 @@ import { Menu } from '../webcomponent/menu.js'
 import { Chart, registerables } from 'chart.js';
 import { displayAuthentication, displayError, displaySuccess } from "./utility.js";
 import { Dialog } from "./dialog"
+import { EchoRequest } from 'globular-web-client/echo/echo_pb.js';
 
 Chart.register(...registerables);
 
@@ -184,10 +185,9 @@ function generateRandomColors(number) {
     });
 }
 
-function getStats(address, callback, errorcallback) {
+function getStats(url, callback, errorcallback) {
 
-    let url = `https://${address}`
-
+ 
     var xmlhttp = new XMLHttpRequest();
     xmlhttp.timeout = 1500
 
@@ -201,8 +201,7 @@ function getStats(address, callback, errorcallback) {
     };
 
     xmlhttp.open("GET", url + "/stats", true);
-    xmlhttp.setRequestHeader("domain", address);
-
+  
     xmlhttp.send();
 }
 
@@ -342,8 +341,8 @@ export class SystemMonitor extends HTMLElement {
             // remove the dialog 
             this.parentNode.removeChild(this)
         }
-    
-    
+
+
         let hostInfosTab = this.shadowRoot.querySelector("#host-infos-tab")
         this.hostInfos = new HostInfos(this.globule)
         this.appendChild(this.hostInfos)
@@ -453,9 +452,37 @@ export class SystemMonitor extends HTMLElement {
      * The this is call at login time.
      */
     connectedCallback() {
+        /*
+        // Test...
+        let sayHello = (count) =>{
+            let rqst = new EchoRequest
+            rqst.setMessage(`Hello ${count}`)
+            this.globule.echoService.echo(rqst, {
+                domain: this.globule.config.Domain
+            }).then(rsp => {
+                console.log(rsp.getMessage())
+                if (count > 0){
+                    sayHello(count - 1)
+                }
+            }
+            ).catch(err => {
+                console.log(err)
+            })
+        }
+        
+        sayHello(100)
+        */
+
 
         this.shadowRoot.querySelector(`.title`).innerHTML = `System Monitor ${this.globule.config.Name}@${this.globule.config.Domain} Globular ${this.globule.config.Version}`
-        const address = this.globule.config.Name + "." + this.globule.config.Domain
+
+        let address =  "https://" + this.globule.domain 
+        address += "/stats"
+        address += "?host=" + this.globule.config.Name + "." + this.globule.config.Domain
+        address += "&http_port=" + this.globule.config.PortHttp
+        address += "&https_port=" + this.globule.config.PortHttps
+        address += "&protocol=" + this.globule.config.Protocol
+
         getStats(address, (stats) => {
             number_of_thread = stats.cpu.utilizations.length
 
@@ -825,20 +852,20 @@ export class ProcessesManager extends HTMLElement {
                         rqst.setPid(info.getPid())
 
                         // Check if the user is logged as sa...
-                        if(this.globule.token == null){
-                            displayAuthentication(`You must be logged as <span style="font-style: italic;">sa</span> to kill a process.`, this.globule, 
-                                ()=>{
+                        if (this.globule.token == null) {
+                            displayAuthentication(`You must be logged as <span style="font-style: italic;">sa</span> to kill a process.`, this.globule,
+                                () => {
                                     // Here I will kill the process...
                                     this.globule.adminService.killProcess(rqst, { domain: this.globule.config.Domain, token: this.globule.token })
-                                    .then(rsp => {
-                                        // remove the process.
-                                        processRow.parentNode.removeChild(processRow)
+                                        .then(rsp => {
+                                            // remove the process.
+                                            processRow.parentNode.removeChild(processRow)
 
-                                        // Here I will display a message...
-                                        displaySuccess(`Process ${info.getName()}(${info.getPid()}) killed.`)
-                                    })
-                                    .catch(err => {displayError(err); this.globule.token = null})
-                                }, ()=>{
+                                            // Here I will display a message...
+                                            displaySuccess(`Process ${info.getName()}(${info.getPid()}) killed.`)
+                                        })
+                                        .catch(err => { displayError(err); this.globule.token = null })
+                                }, () => {
 
                                 })
                             return
@@ -852,7 +879,7 @@ export class ProcessesManager extends HTMLElement {
                                 // Here I will display a message...
                                 displaySuccess(`Process ${info.getName()}(${info.getPid()}) killed.`, this.globule)
                             })
-                            .catch(err => {displayError(err); this.globule.token = null})
+                            .catch(err => { displayError(err); this.globule.token = null })
                     }
                 } else {
                     // Here I will update the value of the cpu usage and memory usage.
