@@ -476,12 +476,12 @@ export class SystemMonitor extends HTMLElement {
 
         this.shadowRoot.querySelector(`.title`).innerHTML = `System Monitor ${this.globule.config.Name}@${this.globule.config.Domain} Globular ${this.globule.config.Version}`
 
-        let address =  "https://" + this.globule.domain 
+        let address =  window.location.protocol + "//" + this.globule.domain 
         address += "/stats"
         address += "?host=" + this.globule.config.Name + "." + this.globule.config.Domain
         address += "&http_port=" + this.globule.config.PortHttp
         address += "&https_port=" + this.globule.config.PortHttps
-        address += "&protocol=" + this.globule.config.Protocol
+        address += "&scheme=" + this.globule.config.Protocol
 
         getStats(address, (stats) => {
             number_of_thread = stats.cpu.utilizations.length
