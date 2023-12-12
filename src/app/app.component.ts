@@ -5,6 +5,7 @@ import '../webcomponent/themeEditor'
 import '../webcomponent/menu'
 import '../webcomponent/dialog'
 import '../webcomponent/network'
+import '../webcomponent/cluster.js';
 
 @Component({
   selector: 'app-root',

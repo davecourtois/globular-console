@@ -7,6 +7,7 @@ import '@polymer/iron-icons/social-icons'
 import '@polymer/iron-icons/communication-icons'
 import '@polymer/iron-icons/editor-icons'
 import "@polymer/paper-spinner/paper-spinner.js";
+
 import {SystemMonitor} from  "./systemMonitor.js"
 import {ConfigurationManager} from  "./configuration.js"
 
@@ -313,14 +314,18 @@ export class GlobulesManager extends HTMLElement {
             <div id="hosts">
                 <slot name="hosts"></slot>
             </div>
-
         </div>
         `
 
         document.addEventListener('displayHostEvent', (event) => {
             this.shadowRoot.querySelector("#content").style.display = "block"
             this.displayHost(event.detail.host)
+
+            document.querySelector("globular-cluster-manager").style.display = "block"
         });
+
+
+
     }
 
     // The connected callback
@@ -428,6 +433,7 @@ export class HostPanel extends HTMLElement {
                         <img id="host-image" src="./assets/icons/Gnome-fs-server.svg" alt="host"> 
                     </div>
                     <span id="host-name">Host</span>
+                    <span id="host-infos">Infos</span>
                     <span id="host-address">Address</span>
                     <span id="host-mac">MAC</span> 
                 </div>
@@ -444,6 +450,8 @@ export class HostPanel extends HTMLElement {
         // I will set the id of the container.
         this.id = "_" + host.getMac().replace(/:/g, "-")
         let hostname = host.getName().split(":")[0]
+        let infos = host.getInfos()
+
         if (hostname.length == 0) {
             hostname = "unknown"
             this.shadowRoot.querySelector("#actions").style.display = "none"
@@ -451,6 +459,9 @@ export class HostPanel extends HTMLElement {
             // In that case i will try to connect to the globule... 
             // I will set the connection status.
             this.globule = new Globular("https://" + host.getName() + "/config", () => {
+
+                // set the globule in the cluster manager...
+                document.querySelector("globular-cluster-manager").setGlobule(this.globule)
 
                 // I will set the connection status.
                 this.shadowRoot.querySelector("#connection-status").src = "./assets/icons/connected.svg"
@@ -503,6 +514,7 @@ export class HostPanel extends HTMLElement {
         this.shadowRoot.querySelector("#host-name").innerHTML = hostname
         this.shadowRoot.querySelector("#host-address").innerHTML = host.getIp()
         this.shadowRoot.querySelector("#host-mac").innerHTML = host.getMac()
+        this.shadowRoot.querySelector("#host-infos").innerHTML = infos
 
 
     }

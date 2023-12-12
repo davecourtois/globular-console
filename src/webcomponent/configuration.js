@@ -1,4 +1,3 @@
-import { ClusterConfigurationManager } from "./cluster_configuation.js";
 import { GeneralConfigurationManager } from "./general_configuration.js"
 
 /**
@@ -158,14 +157,6 @@ export class ConfigurationManager extends HTMLElement {
                      <img class="header-icon" src="assets/icons/applications-system.svg" />
                      </div>
                      <div class="list-item-text">
-                     <span>Cluster</span>
-                     </div>
-                  </div>
-                  <div class="list-item">
-                     <div class="list-item-icon">
-                     <img class="header-icon" src="assets/icons/applications-system.svg" />
-                     </div>
-                     <div class="list-item-text">
                      <span>Http(s)</span>
                      </div>
                   </div>
@@ -201,7 +192,6 @@ export class ConfigurationManager extends HTMLElement {
 
       // Now the various manangers...
       this.generalConfigurationManager = new GeneralConfigurationManager(this.globule)
-      this.clusterConfigurationManager = new ClusterConfigurationManager(this.globule)
 
       // I will add the manager to the slot depending on the selected item.
       this.list = this.shadowRoot.querySelector("#list")
@@ -218,10 +208,6 @@ export class ConfigurationManager extends HTMLElement {
                case "General":
                   // add the general manager.
                   this.appendChild(this.generalConfigurationManager)
-                  break;
-               case "Cluster":
-                  // add the cluster manager.
-                  this.appendChild(this.clusterConfigurationManager)
                   break;
                default:
                   break;
