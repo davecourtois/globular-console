@@ -481,7 +481,7 @@ export class SystemMonitor extends HTMLElement {
         address += "?host=" + this.globule.config.Name + "." + this.globule.config.Domain
         address += "&http_port=" + this.globule.config.PortHttp
         address += "&https_port=" + this.globule.config.PortHttps
-        address += "&scheme=" + this.globule.config.Protocol
+        address += "&scheme=http" // The the backend will get the correct scheme...
 
         getStats(address, (stats) => {
             number_of_thread = stats.cpu.utilizations.length
