@@ -7,3 +7,7 @@ code.hljs {
 }
 
 ::slotted([slot="app-side-menu"]) {}
+
+globular-cluster-manager globular-host-panel {
+    margin-top: 20px;
+}

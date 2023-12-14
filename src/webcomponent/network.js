@@ -8,8 +8,8 @@ import '@polymer/iron-icons/communication-icons'
 import '@polymer/iron-icons/editor-icons'
 import "@polymer/paper-spinner/paper-spinner.js";
 
-import {SystemMonitor} from  "./systemMonitor.js"
-import {ConfigurationManager} from  "./configuration.js"
+import { SystemMonitor } from "./systemMonitor.js"
+import { ConfigurationManager } from "./configuration.js"
 
 import { Globular } from 'globular-web-client';
 import { getAvailableHostsRequest } from 'globular-web-client/admin/admin_pb';
@@ -27,6 +27,7 @@ let scanFct = (row) => {
     input.disabled = true
     refreshBtn.style.display = "none"
 
+
     // it seems the address must be prefixed by https:// otherwise it will not work 
     // because the browser will not allow to connect to the server. So let's run the
     // backend with https.
@@ -35,6 +36,8 @@ let scanFct = (row) => {
         // now I will scan the local network and try to find other globules.
         let rqst = new getAvailableHostsRequest()
         globule.adminService.getAvailableHosts(rqst, {}).then((response) => {
+            // I will clear the list of globules.
+            document.querySelector("globular-cluster-manager").clear()
 
             // I will keep the globule in the local store
             displaySuccess("Globule found at " + globule.address)
@@ -308,7 +311,7 @@ export class GlobulesManager extends HTMLElement {
 
         <div id="content">
             <div style="display: flex; flex-direction: row; width: 100%; align-items: center;">
-                <span id="title">List of Hosts or Devices Found</span>
+                <span id="title">Connected Devices</span>
                 <paper-icon-button id="info-btn" icon="icons:info-outline"></paper-icon-button>
             </div>
             <div id="hosts">
@@ -342,6 +345,14 @@ export class GlobulesManager extends HTMLElement {
             // I will create the host panel.
             hostPanel = document.createElement("globular-host-panel")
             hostPanel.slot = "hosts"
+            hostPanel.setAttribute("draggable", "true")
+
+
+            hostPanel.addEventListener('dragstart', (e) => {
+                // Set the dragged data (can be any data)
+                e.dataTransfer.setData('text/plain', hostPanel.id);
+            });
+    
 
             this.appendChild(hostPanel)
         }
@@ -374,6 +385,7 @@ export class HostPanel extends HTMLElement {
         this.shadowRoot.innerHTML = `
         <style>
             #container {
+                user-select: none;
                 background-color: var(--surface-color);
                 padding: .5rem;
                 border-radius: 0.5rem;
@@ -393,7 +405,7 @@ export class HostPanel extends HTMLElement {
                 justify-content: end;
                 width: 100%;
                 height: 100%;
-
+               
             }
 
             #info-btn {
@@ -402,7 +414,14 @@ export class HostPanel extends HTMLElement {
 
             #content img {
                 width: 64px;
-                height: 64px;
+                height: 64px; 
+                user-drag: none;
+                -webkit-user-drag: none;
+                user-select: none;
+                -moz-user-select: none;
+                -webkit-user-select: none;
+                -ms-user-select: none;
+
             }
 
             #actions {
@@ -417,10 +436,24 @@ export class HostPanel extends HTMLElement {
                 color: var(--primary-color);
             }
 
+            #actions-slot {
+                display: flex;
+                flex-direction: row;
+                justify-content: flex-start;
+                width: 100%;
+                position: absolute;
+                top: -40px;
+                right: 0px;
+                color: var(--google-grey-700);
+                font-size: .8rem;
+            }
 
         </style>
 
         <div id="container">
+            <div id="actions-slot">
+                <slot  name="actions"></slot>
+            </div>
             <div id="content">
                 <div id="actions">
                     <paper-icon-button id="settings-btn" icon="icons:settings"  style="align-self: flex-start;"></paper-icon-button>
@@ -441,7 +474,6 @@ export class HostPanel extends HTMLElement {
             <slot></slot>
         </div>
         `
-
     }
 
     // Call search event.
@@ -472,9 +504,9 @@ export class HostPanel extends HTMLElement {
                 // The system info button.
                 this.shadowRoot.querySelector("#info-btn").addEventListener('click', () => {
                     let id = "_" + this.globule.config.Mac.replace(/:/g, "-") + "-system-info"
-                    
+
                     // will do nothing if the system monitor is already displayed.
-                    if(document.body.querySelector("#" + id)) {
+                    if (document.body.querySelector("#" + id)) {
                         return
                     }
 
@@ -488,9 +520,9 @@ export class HostPanel extends HTMLElement {
                 // The configuration button.
                 this.shadowRoot.querySelector("#settings-btn").addEventListener('click', () => {
                     let id = "_" + this.globule.config.Mac.replace(/:/g, "-") + "-settings"
-                    
+
                     // will do nothing if the system monitor is already displayed.
-                    if(document.body.querySelector("#" + id)) {
+                    if (document.body.querySelector("#" + id)) {
                         return
                     }
 
@@ -499,7 +531,7 @@ export class HostPanel extends HTMLElement {
                     configuration.id = id
 
                     document.body.appendChild(configuration)
-                })  
+                })
 
             }, (err) => {
                 // I will set the connection status.
@@ -507,7 +539,7 @@ export class HostPanel extends HTMLElement {
 
                 // I will hide the info button.
                 this.shadowRoot.querySelector("#actions").style.display = "none"
-               
+
             })
         }
 
