@@ -1,5 +1,5 @@
 import { flatMap } from "rxjs";
-import { displayAuthentication, displayError } from "./utility";
+import { displayAuthentication, displayError, displaySuccess } from "./utility";
 import { AcceptPeerRqst, GetPeersRqst, Peer, PeerApprovalState, RegisterPeerRqst, UpdatePeerRqst } from "globular-web-client/resource/resource_pb";
 
 /**
@@ -144,6 +144,7 @@ export class ClusterManager extends HTMLElement {
         globule.resourceService.registerPeer(rqst, { domain: globule.config.Domain, application: "globular-console", token: globule.token })
             .then(() => {
                 console.log("Peer registered")
+                this.refresh()
             })
             .catch((error) => {
                 displayError(error)
@@ -181,11 +182,11 @@ export class ClusterManager extends HTMLElement {
             for (let id in this.globules) {
                 let globule = this.globules[id]
                 if (globule.config.DNS != globule.config.Name + "." + globule.config.Domain) {
-    
+
                     globule.config.Peers.forEach((peer) => {
                         if (peer.Hostname == this.master.config.Name) {
                             let hostPanel = globule.hostPanel
-                            
+
                             if (globule.peer == undefined) {
 
                                 globule.peer = new Peer()
@@ -203,11 +204,16 @@ export class ClusterManager extends HTMLElement {
                                         if (globule.peer.getState() == PeerApprovalState.PEER_ACCETEP) {
                                             this.appendChild(globule.hostPanel)
                                         } else if (globule.peer.getState() == PeerApprovalState.PEER_PENDING) {
-                 
+
                                             this.appendChild(globule.hostPanel)
 
                                             // So here I will add a button to accept the peer or reject it.
                                             let acceptBtn = document.createElement("paper-button")
+                                            if (hostPanel.querySelector("#accept-btn") != null) {
+                                                return
+                                            }
+
+                                            acceptBtn.id = "accept-btn"
                                             acceptBtn.innerHTML = "Accept"
                                             acceptBtn.slot = "actions"
 
@@ -239,6 +245,7 @@ export class ClusterManager extends HTMLElement {
 
                                             acceptBtn.addEventListener("click", () => {
 
+                                                // I will remove the buttons.
                                                 rejectBtn.parentNode.removeChild(rejectBtn)
                                                 acceptBtn.parentNode.removeChild(acceptBtn)
 
@@ -248,6 +255,9 @@ export class ClusterManager extends HTMLElement {
                                                 this.acceptPeer(globule, () => {
                                                     // I will add the host panel.
                                                     this.appendChild(globule.hostPanel)
+                                                    displaySuccess(`Peer ${globule.Name} successfully accepted`)
+                                                    this.refresh()
+                                                    
                                                 }, (error) => {
                                                     displayError(error)
                                                 })
@@ -277,20 +287,94 @@ export class ClusterManager extends HTMLElement {
         }
     }
 
-    acceptPeer(globule, callback, errorCallback) {
-            let rqst = new AcceptPeerRqst()
-            rqst.setPeer(globule.peer)
-            this.master.resourceService.acceptPeer(rqst, { domain: this.master.config.Domain, application: "globular-console", token: "" })
-                .then(() => {
+    // save the peer configuration.
+    saveConfig(globule, callback, errorCallback) {
+        let httpRqst = new XMLHttpRequest();
+
+        httpRqst.onreadystatechange = () => {
+            if (httpRqst.readyState == 4) {
+                if (httpRqst.status == 200) {
+                    // I will set the token.
+                    globule.token = httpRqst.responseText;
                     if (callback) {
-                        callback()
+                        callback();
                     }
-                })
-                .catch((error) => {
+                } else {
                     if (errorCallback) {
-                        errorCallback(error)
+                        errorCallback(httpRqst.responseText);
                     }
-                })
+                }
+            }
+        };
+
+        let url = globule.config.Protocol + "://" + globule.config.Name;
+        if (globule.config.Domain != "localhost") {
+            url += "." + globule.config.Domain;
+        }
+
+        if (globule.config.Protocol === "https") {
+            if (globule.config.PortHttps !== 443)
+                url += ":" + globule.config.PortHttps;
+        } else {
+            if (globule.config.PortHttp !== 80)
+                url += ":" + globule.config.PortHttp;
+        }
+
+        url += "/save_config";
+
+        // Open the request before setting headers
+        httpRqst.open("POST", url, true);
+
+        // Set the headers after opening the request
+        httpRqst.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+        httpRqst.setRequestHeader("token", globule.token);
+
+        // Send the request
+
+        // set the new values...
+        globule.config.Domain = this.master.config.Domain
+        globule.config.Protocol = this.master.config.Protocol
+        if(globule.config.AlternateDomains == null){
+            globule.config.AlternateDomains = []
+        }
+
+        // set the master as alternate domain, so the master will be able to access the globule using the master name.
+        globule.config.AlternateDomains.push(  "*." +  this.master.config.Domain)
+
+
+        httpRqst.send(JSON.stringify(globule.config));
+    }
+
+    acceptPeer(globule, callback, errorCallback) {
+        let rqst = new AcceptPeerRqst()
+        rqst.setPeer(globule.peer)
+        this.master.resourceService.acceptPeer(rqst, { domain: this.master.config.Domain, application: "globular-console", token: "" })
+            .then(() => {
+                if (callback) {
+                    // Set the master as DNS.
+                    globule.config.DNS = this.master.config.Name + "." + this.master.config.Domain
+
+                    // so Here I will get the token for the peer...
+                    if (globule.token == null) {
+                        displayAuthentication("Enter the sa password of " + globule.config.Name, globule,
+                            () => {
+                                this.saveConfig(globule, callback, errorCallback)
+                      
+                            },
+                            (error) => {
+                                displayError(error)
+                            })
+                    } else {
+                        this.saveConfig(globule, callback, errorCallback)
+                       
+                    }
+                }
+            })
+            .catch((error) => {
+                if (errorCallback) {
+                    errorCallback(error)
+                }
+            })
     }
 
 
@@ -308,7 +392,7 @@ export class ClusterManager extends HTMLElement {
                     errorCallback(error)
                 }
             })
-}
+    }
 
 
     // Called when the element is inserted in a document, including into a shadow tree

@@ -476,7 +476,11 @@ export class SystemMonitor extends HTMLElement {
 
         this.shadowRoot.querySelector(`.title`).innerHTML = `System Monitor ${this.globule.config.Name}@${this.globule.config.Domain} Globular ${this.globule.config.Version}`
 
-        let address =  window.location.protocol + "//" + this.globule.domain 
+        let address =  window.location.protocol + "//"
+        if(window.location.hostname == "localhost"){
+            address += this.globule.config.LocalIp
+        }
+        
         address += "/stats"
         address += "?host=" + this.globule.config.Name + "." + this.globule.config.Domain
         address += "&http_port=" + this.globule.config.PortHttp

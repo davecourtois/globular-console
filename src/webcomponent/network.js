@@ -27,11 +27,8 @@ let scanFct = (row) => {
     input.disabled = true
     refreshBtn.style.display = "none"
 
-
-    // it seems the address must be prefixed by https:// otherwise it will not work 
-    // because the browser will not allow to connect to the server. So let's run the
-    // backend with https.
-    let url = "https://" + address + "/config"
+    // I will test if the address is valid.
+    let url = window.location.protocol + address + "/config"
     let globule = new Globular(url, () => {
         // now I will scan the local network and try to find other globules.
         let rqst = new getAvailableHostsRequest()
@@ -352,7 +349,7 @@ export class GlobulesManager extends HTMLElement {
                 // Set the dragged data (can be any data)
                 e.dataTransfer.setData('text/plain', hostPanel.id);
             });
-    
+
 
             this.appendChild(hostPanel)
         }
@@ -487,67 +484,71 @@ export class HostPanel extends HTMLElement {
         if (hostname.length == 0) {
             hostname = "unknown"
             this.shadowRoot.querySelector("#actions").style.display = "none"
-        } else {
-            // In that case i will try to connect to the globule... 
-            // I will set the connection status.
-            this.globule = new Globular("https://" + host.getName() + "/config", () => {
-
-                // set the globule in the cluster manager...
-                document.querySelector("globular-cluster-manager").setGlobule(this.globule)
-
-                // I will set the connection status.
-                this.shadowRoot.querySelector("#connection-status").src = "./assets/icons/connected.svg"
-
-                // I will display the info button.
-                this.shadowRoot.querySelector("#actions").style.display = ""
-
-                // The system info button.
-                this.shadowRoot.querySelector("#info-btn").addEventListener('click', () => {
-                    let id = "_" + this.globule.config.Mac.replace(/:/g, "-") + "-system-info"
-
-                    // will do nothing if the system monitor is already displayed.
-                    if (document.body.querySelector("#" + id)) {
-                        return
-                    }
-
-                    // Here I will display system informations...
-                    let systemInfo = new SystemMonitor(this.globule)
-                    systemInfo.id = id
-
-                    document.body.appendChild(systemInfo)
-                })
-
-                // The configuration button.
-                this.shadowRoot.querySelector("#settings-btn").addEventListener('click', () => {
-                    let id = "_" + this.globule.config.Mac.replace(/:/g, "-") + "-settings"
-
-                    // will do nothing if the system monitor is already displayed.
-                    if (document.body.querySelector("#" + id)) {
-                        return
-                    }
-
-                    // Here I will display system informations...
-                    let configuration = new ConfigurationManager(this.globule)
-                    configuration.id = id
-
-                    document.body.appendChild(configuration)
-                })
-
-            }, (err) => {
-                // I will set the connection status.
-                this.shadowRoot.querySelector("#connection-status").src = "./assets/icons/disconnected.svg"
-
-                // I will hide the info button.
-                this.shadowRoot.querySelector("#actions").style.display = "none"
-
-            })
         }
 
+        // In that case i will try to connect to the globule... 
+        // I will set the connection status.
+        this.globule = new Globular("http://" + host.getIp() + "/config", () => {
+
+            hostname = this.globule.config.Name.split(":")[0]
+            this.shadowRoot.querySelector("#host-name").innerHTML = hostname
+            this.globule.config.LocalIp = host.getIp()
+
+            // set the globule in the cluster manager...
+            document.querySelector("globular-cluster-manager").setGlobule(this.globule)
+
+            // I will set the connection status.
+            this.shadowRoot.querySelector("#connection-status").src = "./assets/icons/connected.svg"
+
+            // I will display the info button.
+            this.shadowRoot.querySelector("#actions").style.display = ""
+
+            // The system info button.
+            this.shadowRoot.querySelector("#info-btn").addEventListener('click', () => {
+                let id = "_" + this.globule.config.Mac.replace(/:/g, "-") + "-system-info"
+
+                // will do nothing if the system monitor is already displayed.
+                if (document.body.querySelector("#" + id)) {
+                    return
+                }
+
+                // Here I will display system informations...
+                let systemInfo = new SystemMonitor(this.globule)
+                systemInfo.id = id
+
+                document.body.appendChild(systemInfo)
+            })
+
+            // The configuration button.
+            this.shadowRoot.querySelector("#settings-btn").addEventListener('click', () => {
+                let id = "_" + this.globule.config.Mac.replace(/:/g, "-") + "-settings"
+
+                // will do nothing if the system monitor is already displayed.
+                if (document.body.querySelector("#" + id)) {
+                    return
+                }
+
+                // Here I will display system informations...
+                let configuration = new ConfigurationManager(this.globule)
+                configuration.id = id
+
+                document.body.appendChild(configuration)
+            })
+
+        }, (err) => {
+            // I will set the connection status.
+            this.shadowRoot.querySelector("#connection-status").src = "./assets/icons/disconnected.svg"
+
+            // I will hide the info button.
+            this.shadowRoot.querySelector("#actions").style.display = "none"
+
+        })
+
+        // I will set the host infos.
         this.shadowRoot.querySelector("#host-name").innerHTML = hostname
         this.shadowRoot.querySelector("#host-address").innerHTML = host.getIp()
         this.shadowRoot.querySelector("#host-mac").innerHTML = host.getMac()
         this.shadowRoot.querySelector("#host-infos").innerHTML = infos
-
 
     }
 }
