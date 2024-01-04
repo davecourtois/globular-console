@@ -153,7 +153,6 @@ export class ClusterManager extends HTMLElement {
     }
 
     refresh() {
-        this.innerHTML = ""
 
         // I will add the master first.
         if (this.master != null) {
@@ -175,115 +174,108 @@ export class ClusterManager extends HTMLElement {
             hostPanel.appendChild(masterIcon)
 
             this.appendChild(hostPanel)
-        }
 
-        // I will add the peers.
-        if (this.master != null) {
-            for (let id in this.globules) {
-                let globule = this.globules[id]
-                if (globule.config.DNS != globule.config.Name + "." + globule.config.Domain) {
+            this.master.config.Peers.forEach((peer) => {
 
-                    globule.config.Peers.forEach((peer) => {
-                        if (peer.Hostname == this.master.config.Name) {
-                            let hostPanel = globule.hostPanel
+                let globule = this.globules["_" + peer.Mac.replace(/:/g, "-")]
+                if (globule != null) {
+                    let hostPanel = globule.hostPanel
+                    if (globule.peer == undefined) {
 
-                            if (globule.peer == undefined) {
+                        // I will add the host panel.
+                        hostPanel.style.position = "relative"
+         
+                        // Now I will get the peer information from the master...
+                        let rqst = new GetPeersRqst()
+                        rqst.setQuery(`{"mac": "${globule.config.Mac}"}`)
+                        let stream = this.master.resourceService.getPeers(rqst, { domain: this.master.config.Domain, application: "globular-console", token: "" })
+                        stream.on("data", (rsp) => {
+                            globule.peer = rsp.getPeersList()[0]
+                            if (globule.peer != null) {
 
-                                globule.peer = new Peer()
-                                hostPanel.style.position = "relative"
+                                // console.log("Peer found", peer.getState())
+                                if (globule.peer.getState() == PeerApprovalState.PEER_ACCETEP) {
+                                    this.appendChild(globule.hostPanel)
+                                } else if (globule.peer.getState() == PeerApprovalState.PEER_PENDING) {
 
-                                // Now I will get the peer information from the master...
-                                let rqst = new GetPeersRqst()
-                                rqst.setQuery(`{"mac": "${globule.config.Mac}"}`)
-                                let stream = this.master.resourceService.getPeers(rqst, { domain: this.master.config.Domain, application: "globular-console", token: "" })
-                                stream.on("data", (rsp) => {
-                                    globule.peer = rsp.getPeersList()[0]
-                                    if (globule.peer != null) {
+                                    // I will remove the host panel.
+                                    this.appendChild(globule.hostPanel)
 
-                                        // console.log("Peer found", peer.getState())
-                                        if (globule.peer.getState() == PeerApprovalState.PEER_ACCETEP) {
-                                            this.appendChild(globule.hostPanel)
-                                        } else if (globule.peer.getState() == PeerApprovalState.PEER_PENDING) {
-
-                                            this.appendChild(globule.hostPanel)
-
-                                            // So here I will add a button to accept the peer or reject it.
-                                            let acceptBtn = document.createElement("paper-button")
-                                            if (hostPanel.querySelector("#accept-btn") != null) {
-                                                return
-                                            }
-
-                                            acceptBtn.id = "accept-btn"
-                                            acceptBtn.innerHTML = "Accept"
-                                            acceptBtn.slot = "actions"
-
-                                            hostPanel.appendChild(acceptBtn)
-
-                                            let rejectBtn = document.createElement("paper-button")
-                                            rejectBtn.innerHTML = "Reject"
-                                            rejectBtn.slot = "actions"
-
-                                            hostPanel.appendChild(rejectBtn)
-
-
-                                            rejectBtn.addEventListener("click", () => {
-
-                                                rejectBtn.parentNode.removeChild(rejectBtn)
-                                                acceptBtn.parentNode.removeChild(acceptBtn)
-
-                                                globule.peer.setState(PeerApprovalState.PEER_REJECTED)
-
-                                                // I will reject the peer.
-                                                this.rejectPeer(globule, () => {
-                                                    // I will add the host panel.
-                                                    this.appendChild(globule.hostPanel)
-                                                }, (error) => {
-                                                    displayError(error)
-                                                })
-
-                                            })
-
-                                            acceptBtn.addEventListener("click", () => {
-
-                                                // I will remove the buttons.
-                                                rejectBtn.parentNode.removeChild(rejectBtn)
-                                                acceptBtn.parentNode.removeChild(acceptBtn)
-
-                                                globule.peer.setState(PeerApprovalState.PEER_ACCETEP)
-
-                                                // I will accept the peer.
-                                                this.acceptPeer(globule, () => {
-                                                    // I will add the host panel.
-                                                    this.appendChild(globule.hostPanel)
-                                                    displaySuccess(`Peer ${globule.Name} successfully accepted`)
-                                                    this.refresh()
-                                                    
-                                                }, (error) => {
-                                                    displayError(error)
-                                                })
-                                            })
-
-
-                                        } else {
-                                            // PEER_REJECTED
-                                            /** Nothing for the moment... */
-                                        }
+                                    // So here I will add a button to accept the peer or reject it.
+                                    let acceptBtn = document.createElement("paper-button")
+                                    if (hostPanel.querySelector("#accept-btn") != null) {
+                                        return
                                     }
-                                });
 
-                                stream.on("status", (status) => {
-                                    if (status.code === 0) {
-                                        /** */
-                                    } else {
-                                        displayError(status.details)
-                                    }
-                                })
+                                    acceptBtn.id = "accept-btn"
+                                    acceptBtn.innerHTML = "Accept"
+                                    acceptBtn.slot = "actions"
+
+                                    hostPanel.appendChild(acceptBtn)
+
+                                    let rejectBtn = document.createElement("paper-button")
+                                    rejectBtn.innerHTML = "Reject"
+                                    rejectBtn.slot = "actions"
+
+                                    hostPanel.appendChild(rejectBtn)
+
+
+                                    rejectBtn.addEventListener("click", () => {
+
+                                        rejectBtn.parentNode.removeChild(rejectBtn)
+                                        acceptBtn.parentNode.removeChild(acceptBtn)
+
+                                        globule.peer.setState(PeerApprovalState.PEER_REJECTED)
+
+                                        // I will reject the peer.
+                                        this.rejectPeer(globule, () => {
+                                            // I will add the host panel.
+                                            this.appendChild(globule.hostPanel)
+                                        }, (error) => {
+                                            displayError(error)
+                                        })
+
+                                    })
+
+                                    acceptBtn.addEventListener("click", () => {
+
+                                        // I will remove the buttons.
+                                        rejectBtn.parentNode.removeChild(rejectBtn)
+                                        acceptBtn.parentNode.removeChild(acceptBtn)
+
+                                        globule.peer.setState(PeerApprovalState.PEER_ACCETEP)
+
+                                        // I will accept the peer.
+                                        this.acceptPeer(globule, () => {
+                                            // I will add the host panel.
+                                            this.appendChild(globule.hostPanel)
+                                            displaySuccess(`Peer ${globule.Name} successfully accepted`)
+                                            this.refresh()
+
+                                        }, (error) => {
+                                            displayError(error)
+                                        })
+                                    })
+
+
+                                } else {
+                                    // PEER_REJECTED
+                                    /** Nothing for the moment... */
+                                }
                             }
+                        });
 
-                        }
-                    })
+                        stream.on("status", (status) => {
+                            if (status.code === 0) {
+                                /** */
+                            } else {
+                                displayError(status.details)
+                            }
+                        })
+                    }
                 }
-            }
+
+            })
         }
     }
 
@@ -334,12 +326,12 @@ export class ClusterManager extends HTMLElement {
         // set the new values...
         globule.config.Domain = this.master.config.Domain
         globule.config.Protocol = this.master.config.Protocol
-        if(globule.config.AlternateDomains == null){
+        if (globule.config.AlternateDomains == null) {
             globule.config.AlternateDomains = []
         }
 
         // set the master as alternate domain, so the master will be able to access the globule using the master name.
-        globule.config.AlternateDomains.push(  "*." +  this.master.config.Domain)
+        globule.config.AlternateDomains.push("*." + this.master.config.Domain)
 
 
         httpRqst.send(JSON.stringify(globule.config));
@@ -359,14 +351,14 @@ export class ClusterManager extends HTMLElement {
                         displayAuthentication("Enter the sa password of " + globule.config.Name, globule,
                             () => {
                                 this.saveConfig(globule, callback, errorCallback)
-                      
+
                             },
                             (error) => {
                                 displayError(error)
                             })
                     } else {
                         this.saveConfig(globule, callback, errorCallback)
-                       
+
                     }
                 }
             })
@@ -417,6 +409,7 @@ export class ClusterManager extends HTMLElement {
             // Set the master.
             this.master = globule
         }
+
 
         this.refresh()
 
