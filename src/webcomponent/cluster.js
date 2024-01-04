@@ -154,14 +154,13 @@ export class ClusterManager extends HTMLElement {
 
     refresh() {
 
+
         // I will add the master first.
         if (this.master != null) {
 
-            let hostPanel = this.master.hostPanel
-
             this.shadowRoot.getElementById("cluster-domain").innerHTML = this.master.config.Domain
 
-            hostPanel.style.position = "relative"
+            this.master.hostPanel.style.position = "relative"
 
             let masterIcon = document.createElement("iron-icon")
             masterIcon.setAttribute("icon", "icons:star")
@@ -171,31 +170,36 @@ export class ClusterManager extends HTMLElement {
             masterIcon.style.left = "70px"
             masterIcon.style.color = "var(--google-yellow-300)"
 
-            hostPanel.appendChild(masterIcon)
-
-            this.appendChild(hostPanel)
+            this.master.hostPanel.appendChild(masterIcon)
+            this.innerHTML = ""
+            this.appendChild(this.master.hostPanel)
+            console.log("append master ", this.master.config.Mac)
 
             this.master.config.Peers.forEach((peer) => {
-
                 let globule = this.globules["_" + peer.Mac.replace(/:/g, "-")]
+                console.log("peer", peer.Mac)
                 if (globule != null) {
                     let hostPanel = globule.hostPanel
                     if (globule.peer == undefined) {
 
                         // I will add the host panel.
                         hostPanel.style.position = "relative"
-         
+
                         // Now I will get the peer information from the master...
                         let rqst = new GetPeersRqst()
                         rqst.setQuery(`{"mac": "${globule.config.Mac}"}`)
                         let stream = this.master.resourceService.getPeers(rqst, { domain: this.master.config.Domain, application: "globular-console", token: "" })
                         stream.on("data", (rsp) => {
+
+                            // I will set the peer.
                             globule.peer = rsp.getPeersList()[0]
+
                             if (globule.peer != null) {
 
                                 // console.log("Peer found", peer.getState())
                                 if (globule.peer.getState() == PeerApprovalState.PEER_ACCETEP) {
                                     this.appendChild(globule.hostPanel)
+                                    //console.log("append peer ", globule.config.Mac)
                                 } else if (globule.peer.getState() == PeerApprovalState.PEER_PENDING) {
 
                                     // I will remove the host panel.
@@ -392,8 +396,6 @@ export class ClusterManager extends HTMLElement {
 
         let id = "_" + globule.config.Mac.replace(/:/g, "-")
         this.globules[id] = globule
-        globule.hostPanel = document.getElementById(id)
-
 
         // I will retreive the host panel...
         if (globule.hostPanel == null) {
@@ -401,13 +403,15 @@ export class ClusterManager extends HTMLElement {
         }
 
         // If the DNS name is the same as the name of the globule, then it is the master.
-        if (globule.config.DNS == globule.config.Name + "." + globule.config.Domain) {
-            if (this.master != null) {
-                displayError("There are two masters in the cluster: " + this.master.config.Name + " and " + globule.config.Name)
-                return
+        if (this.master == null) {
+            if (globule.config.DNS == globule.config.Name + "." + globule.config.Domain) {
+                if (this.master != null) {
+                    displayError("There are two masters in the cluster: " + this.master.config.Name + " and " + globule.config.Name)
+                    return
+                }
+                // Set the master.
+                this.master = globule
             }
-            // Set the master.
-            this.master = globule
         }
 
 

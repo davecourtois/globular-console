@@ -489,14 +489,19 @@ export class HostPanel extends HTMLElement {
         // In that case i will try to connect to the globule... 
         // I will set the connection status.
         this.globule = new Globular("http://" + host.getIp() + "/config", () => {
-            
-            if (!this.globule.config){
+
+            this.globule.config.LocalIpAddress = host.getIp()
+            this.globule.config.Mac = host.getMac() // also set the mac address...
+
+            if (!this.globule.config) {
                 return
             }
-            
+
             hostname = this.globule.config.Name.split(":")[0]
             this.shadowRoot.querySelector("#host-name").innerHTML = hostname
-            this.globule.config.LocalIp = host.getIp()
+
+            // keep the host panel as reference in the globule.
+            this.globule.hostPanel = this
 
             // set the globule in the cluster manager...
             document.querySelector("globular-cluster-manager").setGlobule(this.globule)

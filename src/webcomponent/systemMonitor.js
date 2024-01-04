@@ -452,7 +452,7 @@ export class SystemMonitor extends HTMLElement {
      * The this is call at login time.
      */
     connectedCallback() {
-        /*
+        
         // Test...
         let sayHello = (count) =>{
             let rqst = new EchoRequest
@@ -470,15 +470,15 @@ export class SystemMonitor extends HTMLElement {
             })
         }
         
-        sayHello(100)
-        */
+        sayHello(1000)
+        
 
 
         this.shadowRoot.querySelector(`.title`).innerHTML = `System Monitor ${this.globule.config.Name}@${this.globule.config.Domain} Globular ${this.globule.config.Version}`
 
         let address =  window.location.protocol + "//"
         if(window.location.hostname == "localhost"){
-            address += this.globule.config.LocalIp
+            address += this.globule.config.LocalIpAddress
         }
         
         address += "/stats"
