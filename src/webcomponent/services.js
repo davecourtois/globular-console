@@ -118,7 +118,6 @@ export class ServiceManager extends HTMLElement {
 
         this.service = service
 
-
         this.globules = []
 
         // Set the shadow dom.
@@ -196,6 +195,7 @@ export class ServiceManager extends HTMLElement {
             <iron-collapse class="subitems" id="collapse-panel" style="display: flex; flex-direction: column;">
                 <div class="collapse-content">
                     <slot name="general-infos"></slot>
+                    <slot name="descriptor"></slot>
                     <slot name="instances"></slot>
                     <slot name="instance"></slot>
                 </div>
@@ -238,13 +238,13 @@ export class ServiceManager extends HTMLElement {
                 let service = evt.detail
 
                 let servicePidDiv = this.querySelector("#service-pid-div")
-                servicePidDiv.innerHTML = service.Process 
+                servicePidDiv.innerHTML = service.Process
 
                 // I will update informations.
                 let serviceStateDiv = this.querySelector("#service-state-div")
                 serviceStateDiv.innerHTML = service.State
 
-                if(service.State == "running"){
+                if (service.State == "running") {
                     let startBtn = this.querySelector("#start-btn")
                     startBtn.style.display = "none"
 
@@ -260,6 +260,71 @@ export class ServiceManager extends HTMLElement {
 
         this.displayGeneralInfos()
         this.displayInstances()
+        this.displayServiceDescription()
+    }
+
+
+    // Display the service description.
+    displayServiceDescription() {
+        if (this.service == null) {
+            return
+        }
+
+        if (this.globules.length == 0) {
+            return
+        }
+
+        // I will get the service descriptor from the first globule.
+        let globule = this.globules[0]
+
+        let id = "_" + this.service.Id.replaceAll(":", "_") + "_descriptor"
+
+        if (this.querySelector("#" + id) != null) {
+            return
+        }
+
+        let address = globule.config.Name + "." + globule.config.Domain
+        if (window.location.protocol == "http:") {
+            address = "http://" + address + ":" + globule.config.PortHttp
+        } else {
+            address = "https://" + address + ":" + globule.config.PortHttps
+        }
+
+        // I will get the service descriptor.
+        address += "/get_service_descriptor?id=" + this.service.Id
+
+        // I will get the service descriptor.
+
+        let xttpRequest = new XMLHttpRequest();
+        xttpRequest.open("GET", address, true);
+        xttpRequest.responseType = "json";
+
+        xttpRequest.onload = () => {
+            let serviceDescriptor = xttpRequest.response
+            // so from the descriptor I will display the service description.
+            serviceDescriptor.ProtoBody.forEach(element => {
+                if (this.service.Name.endsWith(element.ServiceName)) {
+
+                    //  be sure that the descriptor is not already displayed.
+                    if (this.querySelector("#" + id) != null) {
+                        return
+                    }
+
+                    // Create a new service descriptor.
+                    let descriptor = new ServiceDesciptor(element, serviceDescriptor)
+
+                    // Add the descriptor to the service manager.
+                    descriptor.id = id
+                    descriptor.slot = "descriptor"
+
+                    this.appendChild(descriptor)
+                }
+            });
+
+        }
+
+        xttpRequest.send();
+
     }
 
     displayInstances() {
@@ -302,7 +367,7 @@ export class ServiceManager extends HTMLElement {
 
     // Start the service on the given globule.
     startService(globule) {
-        console.log("start service" + globule.config.Name, this.service.Id)
+
         if (globule.token == null) {
             displayAuthentication(`You need to authenticate to start </br>the service ${this.service.Name}</br>on ${globule.config.Name} `, globule,
                 () => {
@@ -330,7 +395,7 @@ export class ServiceManager extends HTMLElement {
                 err => {
                     displayError(err)
                 })
-        }else{
+        } else {
             // So here I will stop the service.
             let rqst = new StartServiceInstanceRequest
             rqst.setServiceId(this.service.Id)
@@ -355,7 +420,7 @@ export class ServiceManager extends HTMLElement {
 
     // Stop the service on the given globule.
     stopService(globule) {
-       
+
         if (globule.token == null) {
             displayAuthentication(`You need to authenticate to stop </br>the service ${this.service.Name}</br>on ${globule.config.Name} `, globule,
                 () => {
@@ -383,7 +448,7 @@ export class ServiceManager extends HTMLElement {
                 err => {
                     displayError(err)
                 })
-        }else{
+        } else {
             // So here I will stop the service.
             let rqst = new StopServiceInstanceRequest
             rqst.setServiceId(this.service.Id)
@@ -574,3 +639,262 @@ export class ServiceManager extends HTMLElement {
 }
 
 customElements.define('service-manager', ServiceManager)
+
+
+/**
+ * Display service method and messages. It also allow to configure
+ * load balancing policy at method level. (round robin, random, ...)
+ */
+export class ServiceDesciptor extends HTMLElement {
+    // attributes.
+
+    // Create the applicaiton view.
+    constructor(serviceDescriptor, descriptor) {
+        super()
+
+        this.descriptor = descriptor
+        this.serviceDescriptor = serviceDescriptor
+
+        // Set the shadow dom.
+        this.attachShadow({ mode: 'open' });
+
+        // Innitialisation of the layout.
+        this.shadowRoot.innerHTML = `
+        <style>
+            /* Any custom styling for your code block */
+            @import url('./styles.css');
+
+            #content {
+                display: flex;
+                background-color: var(--surface-color);
+                padding: 1rem;
+                border-radius: 0.5rem;
+                margin: 1rem;
+
+                flex-direction: column;
+            }
+
+            .title {
+                font-size: 1.2rem;
+                margin-left: 1rem;
+                margin-right: 1rem;
+                flex-grow: 1;
+            }
+
+            .sub-title {
+                font-size: 1rem;
+                margin-left: 1.5rem;
+                margin-right: 1rem;
+                flex-grow: 1;
+            }
+
+        </style>
+
+        <div id="content">
+            <div class="title">API</div>
+            <div class="sub-title"></div>
+            <div style="display: flex; flex-direction: column;"> 
+                <slot name="api"></slot>
+            </div>
+
+        </div>
+        `
+
+        if (this.serviceDescriptor.ServiceBody != null) {
+            let comment = this.displayComments(this.serviceDescriptor.Comments)
+            if (comment != "") {
+                comment = "<div style='display: flex; flex-direction: column;'>" + comment + "</div>"
+                this.shadowRoot.querySelector(".sub-title").innerHTML = comment
+            }
+            this.displayAPI(this.serviceDescriptor.ServiceBody)
+        }
+    }
+
+    // This will return the string with the comments.
+    displayComments(comments) {
+        let comment = ""
+        if (comments) {
+            comments.forEach((c, index) => {
+                if (c.Raw) {
+                    comment += c.Raw.replaceAll("//", "").replaceAll("/**", "").replaceAll("**/", "").replaceAll("/*", "").replaceAll("*/", "").trim()
+
+                    // remove the leading * if any.
+                    if (comment.startsWith("*")) {
+                        comment = comment.substring(1).trim()
+                    }
+
+                    if (index < comments.length - 1) {
+                        if (comment != "") {
+                            comment += "</br>"
+                        }
+                    }
+                }
+            })
+        }
+        return comment
+    }
+
+    displayFieldFields(fields) {
+        // options are IsReapeted, IsRequired, IsOptional
+        // The options will be displayed as css table whit
+        // the following columns: reapeated, required, optional,
+        let fragment = `
+        <div style= "display: table; padding-left: 1rem;">
+            <div style="display: table-row">
+                <div style="display: table-cell; padding-right: 1rem; font-size: .75rem;">Name</div>
+                <div style="display: table-cell; padding-right: 1rem; font-size: .75rem;">Type</div>
+                <div style="display: table-cell; padding-right: 1rem; font-size: .75rem;">Repeated</div>
+                <div style="display: table-cell; padding-right: 1rem; font-size: .75rem;">Required</div>
+                <div style="display: table-cell; padding-right: 1rem; font-size: .75rem;">Optional</div>
+                <div style="display: table-cell; padding-right: 1rem; font-size: .75rem;">Comment</div>
+            </div>
+          `
+
+        fields.forEach(field => {
+            console.log(field.InlineComment)
+            fragment +=
+                `<div style="display: table-row">
+            <div style="display: table-cell; padding-right: 1rem;">${field.FieldName}</div>
+            <div style="display: table-cell; padding-right: 1rem;">${field.Type}</div>
+            <div style="display: table-cell; padding-right: 1rem;">${field.IsRepeated}</div>
+            <div style="display: table-cell; padding-right: 1rem;">${field.IsRequired}</div>
+            <div style="display: table-cell; padding-right: 1rem;">${field.IsOptional}</div>`
+
+            if (field.InlineComment) {
+                let inlineComment = field.InlineComment.Raw.replaceAll("//", "").trim()
+                if (inlineComment != "") {
+                    inlineComment = "<div style='display: table-cell; font-style: italic; font-weight: 200; font-size: .9rem;'>" + inlineComment + "</div>"
+                }
+                fragment += inlineComment
+            }else{
+                fragment += `<div style="display: table-cell; padding-right: 1rem;"></div>`
+            }
+            
+            fragment +=`</div>` // end of the table row.
+        })
+
+        return fragment + "</div>"
+    }
+
+    // This will display the response information.
+    displayResponse(response) {
+        let rsp = null;
+
+        // firt of all I will retreive the response from the descriptor.
+        this.descriptor.ProtoBody.forEach(element => {
+            if (element.MessageName == response.MessageType) {
+                rsp = element
+            }
+        });
+
+        if (rsp == null) {
+            return ""
+        }
+
+        let response_fragment = `
+            <div class="title" style="padding-top: 0.5rem; font-size: 1rem; padding-left: 1rem;">Response</div>
+            <div style="display: flex; flex-direction: column; padding-left: 1rem;">
+                <div class="sub-title" style="font-size: 1rem; padding-left: 1rem;">${rsp.MessageName}</div>
+        `
+
+        // display the response fields.
+        response_fragment += `
+            <div class="sub-section" style="padding-left: 2rem;">
+                <div class="label">Fields</div>
+                <div style="display: flex; flex-direction: column">
+        `
+
+        if (rsp.MessageBody == null) {
+            return response_fragment + `None</div> </div>`
+        }
+
+        response_fragment += this.displayFieldFields(rsp.MessageBody)
+
+        return response_fragment + `
+                </div> </div>
+                `
+    }
+
+
+    // This will return the string with the request information.
+    displayRequest(request) {
+        let rqst = null;
+
+        // firt of all I will retreive the request from the descriptor.
+        this.descriptor.ProtoBody.forEach(element => {
+            if (element.MessageName == request.MessageType) {
+                rqst = element
+            }
+        });
+
+        if (rqst == null) {
+            return ""
+        }
+
+        let request_fragment = `
+            <div class="title" style="padding-top: 0.5rem; font-size: 1rem; padding-left: 1rem;">Request</div>
+            <div style="display: flex; flex-direction: column; padding-left: 1rem;">
+                <div class="sub-title" style="font-size: 1rem; padding-left: 1rem;">${rqst.MessageName}</div>
+        `
+
+        // display the request fields.
+        request_fragment += `
+            <div class="sub-section" style="padding-left: 2rem;">
+                <div class="label">Fields</div>
+                <div style="display: flex; flex-direction: column">
+        `
+
+        if (rqst.MessageBody == null) {
+            return request_fragment + `None</div> </div>`
+        }
+
+        request_fragment += this.displayFieldFields(rqst.MessageBody)
+
+        return request_fragment + `
+                </div> </div>
+        `
+    }
+
+    // display the service description.
+    displayAPI(methods) {
+        methods.forEach(method => {
+            let comment = ""
+            if (method) {
+                let comments = this.displayComments(method.Comments)
+                if (comments != "") {
+                    comment = "<div style='display: flex; flex-direction: column;'>" + comments + "</div>"
+                }
+
+
+                let method_fragment = `
+                <div class="title">${method.RPCName}</div>
+                <div class="sub-title">${comment}</div>
+                <div style="display: flex; flex-direction: column;">
+                `
+
+                // display the request.
+                method_fragment += this.displayRequest(method.RPCRequest)
+
+                // display the response.
+                method_fragment += this.displayResponse(method.RPCResponse)
+
+                method_fragment += `
+                </div>
+                `
+
+                let div = document.createElement('div')
+                div.classList.add("section")
+                div.innerHTML = method_fragment
+                div.style.paddingTop = "0"
+                div.style.paddingBottom = "0"
+                div.slot = "api"
+                this.appendChild(div)
+
+            }
+        })
+    }
+
+}
+
+customElements.define('globular-service-descriptor', ServiceDesciptor)
+
