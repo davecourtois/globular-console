@@ -2,13 +2,13 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 
 // the home component
-import { HomeComponent } from './home/home.component';
-import { SettingsComponent } from './settings/settings.component';
+import { ClusterComponent } from './cluster/cluster.component';
+import { ServicesComponent } from './services/services.component';
 
 const routes: Routes = [
-  { path: '', component: HomeComponent },
-  { path: 'home', redirectTo: '/', pathMatch: 'full' },
-  { path: 'settings', component: SettingsComponent }
+  { path: '', component: ClusterComponent },
+  { path: 'cluster', redirectTo: '/', pathMatch: 'full' },
+  { path: 'services', component: ServicesComponent }
 
 ];
 

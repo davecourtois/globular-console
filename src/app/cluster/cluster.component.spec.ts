@@ -1,16 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { SettingsComponent } from './settings.component';
+import { ClusterComponent } from './cluster.component';
 
-describe('SettingsComponent', () => {
-  let component: SettingsComponent;
-  let fixture: ComponentFixture<SettingsComponent>;
+describe('ClusterComponent', () => {
+  let component: ClusterComponent;
+  let fixture: ComponentFixture<ClusterComponent>;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      declarations: [SettingsComponent]
+      declarations: [ClusterComponent]
     });
-    fixture = TestBed.createComponent(SettingsComponent);
+    fixture = TestBed.createComponent(ClusterComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

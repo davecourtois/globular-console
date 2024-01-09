@@ -1,6 +1,10 @@
 import { flatMap } from "rxjs";
 import { displayAuthentication, displayError, displaySuccess } from "./utility";
-import { AcceptPeerRqst, GetPeersRqst, Peer, PeerApprovalState, RegisterPeerRqst, UpdatePeerRqst } from "globular-web-client/resource/resource_pb";
+import { AcceptPeerRqst, GetPeersRqst, Peer, PeerApprovalState, RegisterPeerRqst, RejectPeerRqst, UpdatePeerRqst } from "globular-web-client/resource/resource_pb";
+
+function removeDuplicates(array) {
+    return Array.from(new Set(array));
+}
 
 /**
  * Sample empty component
@@ -11,6 +15,7 @@ export class ClusterManager extends HTMLElement {
     // Create the applicaiton view.
     constructor() {
         super()
+
 
         // Set the shadow dom.
         this.attachShadow({ mode: 'open' });
@@ -110,13 +115,14 @@ export class ClusterManager extends HTMLElement {
                 displayAuthentication("Enter the sa password of " + globule.config.Name, globule,
                     () => {
 
-                        this.registerPeer(globule, hostPanel)
+                        this.registerPeer(globule)
                     },
                     (error) => {
                         displayError(error)
                     })
             } else {
-                this.registerPeer(globule, hostPanel)
+                // The token already exist, so I will register the peer.
+                this.registerPeer(globule)
             }
 
         });
@@ -124,7 +130,7 @@ export class ClusterManager extends HTMLElement {
 
     }
 
-    registerPeer(globule, hostPanel) {
+    registerPeer(globule) {
 
         // so the first step is to register this globule as a peer of the master.
         let peer = new Peer()
@@ -143,8 +149,28 @@ export class ClusterManager extends HTMLElement {
 
         globule.resourceService.registerPeer(rqst, { domain: globule.config.Domain, application: "globular-console", token: globule.token })
             .then(() => {
-                console.log("Peer registered")
-                this.refresh()
+
+                let peer = new Peer()
+
+                // ** do not set the mac address here it will be set in the backend and will not work if the mac address is not the one of the master.
+                peer.setHostname(globule.config.Name)
+                peer.setProtocol(globule.config.Protocol)
+                peer.setDomain(globule.config.Domain)
+                peer.setPorthttp(globule.config.PortHttp)
+                peer.setPorthttps(globule.config.PortHttps)
+                peer.setLocalIpAddress(globule.config.LocalIpAddress)
+                peer.setExternalIpAddress(globule.config.ExternalIpAddress)
+                peer.setMac(globule.config.Mac)
+                peer.setState(PeerApprovalState.PEER_PENDING)
+
+                globule.peer = peer
+
+                this.setAcceptRejectButtons(globule)
+
+                // I will remove the host panel.
+                if (!this.querySelector("#" + globule.hostPanel.id)) {
+                    this.appendChild(globule.hostPanel)
+                }
             })
             .catch((error) => {
                 displayError(error)
@@ -152,8 +178,73 @@ export class ClusterManager extends HTMLElement {
 
     }
 
+    setAcceptRejectButtons(globule) {
+
+        let hostPanel = globule.hostPanel
+
+        // So here I will add a button to accept the peer or reject it.
+        let acceptBtn = document.createElement("paper-button")
+        if (hostPanel.querySelector("#accept-btn") != null) {
+            return
+        }
+
+        acceptBtn.id = "accept-btn"
+        acceptBtn.innerHTML = "Accept"
+        acceptBtn.slot = "actions"
+
+        hostPanel.appendChild(acceptBtn)
+
+        let rejectBtn = document.createElement("paper-button")
+        rejectBtn.innerHTML = "Reject"
+        rejectBtn.slot = "actions"
+
+        hostPanel.appendChild(rejectBtn)
+
+
+        rejectBtn.addEventListener("click", () => {
+
+            rejectBtn.parentNode.removeChild(rejectBtn)
+            acceptBtn.parentNode.removeChild(acceptBtn)
+
+            globule.peer.setState(PeerApprovalState.PEER_REJECTED)
+
+            // I will reject the peer.
+            this.rejectPeer(globule, () => {
+                // I will add the host panel.
+                //this.appendChild(globule.hostPanel)
+            }, (error) => {
+                displayError(error)
+            })
+
+        })
+
+        acceptBtn.addEventListener("click", () => {
+
+            // I will remove the buttons.
+            rejectBtn.parentNode.removeChild(rejectBtn)
+            acceptBtn.parentNode.removeChild(acceptBtn)
+
+            globule.peer.setState(PeerApprovalState.PEER_ACCETEP)
+
+            // I will accept the peer.
+            this.acceptPeer(globule, () => {
+                // I will add the host panel.
+                displaySuccess(`Peer ${globule.config.Name} successfully accepted`)
+                if (!this.querySelector("#" + globule.hostPanel.id)) {
+                    this.appendChild(globule.hostPanel)
+                }
+
+            }, (error) => {
+                displayError(error)
+            })
+        })
+    }
+
     refresh() {
 
+
+        // I will remove all the host panels.
+        this.innerHTML = ""
 
         // I will add the master first.
         if (this.master != null) {
@@ -172,14 +263,16 @@ export class ClusterManager extends HTMLElement {
 
             this.master.hostPanel.appendChild(masterIcon)
             this.innerHTML = ""
+
             this.appendChild(this.master.hostPanel)
             console.log("append master ", this.master.config.Mac)
 
             this.master.config.Peers.forEach((peer) => {
                 let globule = this.globules["_" + peer.Mac.replace(/:/g, "-")]
-                console.log("peer", peer.Mac)
+
                 if (globule != null) {
                     let hostPanel = globule.hostPanel
+                    
                     if (globule.peer == undefined) {
 
                         // I will add the host panel.
@@ -198,68 +291,19 @@ export class ClusterManager extends HTMLElement {
 
                                 // console.log("Peer found", peer.getState())
                                 if (globule.peer.getState() == PeerApprovalState.PEER_ACCETEP) {
-                                    this.appendChild(globule.hostPanel)
+                                    if (!this.querySelector("#" + globule.hostPanel.id)) {
+                                        this.appendChild(globule.hostPanel)
+                                    }
                                     //console.log("append peer ", globule.config.Mac)
                                 } else if (globule.peer.getState() == PeerApprovalState.PEER_PENDING) {
 
+
+                                    this.setAcceptRejectButtons(globule)
+
                                     // I will remove the host panel.
-                                    this.appendChild(globule.hostPanel)
-
-                                    // So here I will add a button to accept the peer or reject it.
-                                    let acceptBtn = document.createElement("paper-button")
-                                    if (hostPanel.querySelector("#accept-btn") != null) {
-                                        return
+                                    if (!this.querySelector("#" + globule.hostPanel.id)) {
+                                        this.appendChild(globule.hostPanel)
                                     }
-
-                                    acceptBtn.id = "accept-btn"
-                                    acceptBtn.innerHTML = "Accept"
-                                    acceptBtn.slot = "actions"
-
-                                    hostPanel.appendChild(acceptBtn)
-
-                                    let rejectBtn = document.createElement("paper-button")
-                                    rejectBtn.innerHTML = "Reject"
-                                    rejectBtn.slot = "actions"
-
-                                    hostPanel.appendChild(rejectBtn)
-
-
-                                    rejectBtn.addEventListener("click", () => {
-
-                                        rejectBtn.parentNode.removeChild(rejectBtn)
-                                        acceptBtn.parentNode.removeChild(acceptBtn)
-
-                                        globule.peer.setState(PeerApprovalState.PEER_REJECTED)
-
-                                        // I will reject the peer.
-                                        this.rejectPeer(globule, () => {
-                                            // I will add the host panel.
-                                            this.appendChild(globule.hostPanel)
-                                        }, (error) => {
-                                            displayError(error)
-                                        })
-
-                                    })
-
-                                    acceptBtn.addEventListener("click", () => {
-
-                                        // I will remove the buttons.
-                                        rejectBtn.parentNode.removeChild(rejectBtn)
-                                        acceptBtn.parentNode.removeChild(acceptBtn)
-
-                                        globule.peer.setState(PeerApprovalState.PEER_ACCETEP)
-
-                                        // I will accept the peer.
-                                        this.acceptPeer(globule, () => {
-                                            // I will add the host panel.
-                                            this.appendChild(globule.hostPanel)
-                                            displaySuccess(`Peer ${globule.Name} successfully accepted`)
-                                            this.refresh()
-
-                                        }, (error) => {
-                                            displayError(error)
-                                        })
-                                    })
 
 
                                 } else {
@@ -334,9 +378,13 @@ export class ClusterManager extends HTMLElement {
             globule.config.AlternateDomains = []
         }
 
-        // set the master as alternate domain, so the master will be able to access the globule using the master name.
-        globule.config.AlternateDomains.push("*." + this.master.config.Domain)
+        // append wildcard domain if not already present.
+        if (!globule.config.AlternateDomains.includes("*." + this.master.config.Domain))
+            globule.config.AlternateDomains.push("*." + this.master.config.Domain)
 
+
+        // remove duplicates.
+        globule.config.AlternateDomains = removeDuplicates(globule.config.AlternateDomains)
 
         httpRqst.send(JSON.stringify(globule.config));
     }
@@ -375,7 +423,7 @@ export class ClusterManager extends HTMLElement {
 
 
     rejectPeer(globule, callback, errorCallback) {
-        let rqst = new RegisterPeerRqst()
+        let rqst = new RejectPeerRqst()
         rqst.setPeer(globule.peer)
         this.master.resourceService.rejectPeer(rqst, { domain: this.master.config.Domain, application: "globular-console", token: "" })
             .then(() => {

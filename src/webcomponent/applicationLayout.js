@@ -435,10 +435,13 @@ export class SideBarMenuItem extends HTMLElement {
     }
 
     // give the focus to the input.
-    let container = this.shadowRoot.querySelector("#container")
     if (this.hasAttribute("icon")) {
-      console.log(this.innerHTML)
-      this.shadowRoot.querySelector("#icon").className = this.getAttribute("icon")
+      let icon = this.getAttribute("icon")
+      if(icon.startsWith("fa")){
+        this.shadowRoot.querySelector("#icon").className = this.getAttribute("icon")
+      }else if(icon.endsWith(".svg")){
+        this.shadowRoot.querySelector("#icon").innerHTML = `<img src="${icon}" style="height: 24px; width: auto;"/>`
+      }
     }
 
     if (this.hasAttribute("text")) {

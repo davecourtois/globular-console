@@ -3,14 +3,14 @@ import { BrowserModule } from '@angular/platform-browser';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
-import { HomeComponent } from './home/home.component';
-import { SettingsComponent } from './settings/settings.component';
+import { ServicesComponent } from './services/services.component';
+import { ClusterComponent } from './cluster/cluster.component';
 
 @NgModule({
   declarations: [
     AppComponent,
-    HomeComponent,
-    SettingsComponent
+    ServicesComponent,
+    ClusterComponent
   ],
   imports: [
     BrowserModule,
@@ -20,4 +20,6 @@ import { SettingsComponent } from './settings/settings.component';
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   bootstrap: [AppComponent]
 })
-export class AppModule { }
+export class AppModule { 
+
+}

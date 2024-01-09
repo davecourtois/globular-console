@@ -454,7 +454,8 @@ export class SystemMonitor extends HTMLElement {
     connectedCallback() {
         
         // Test...
-        let sayHello = (count) =>{
+        
+        /*let sayHello = (count) =>{
             let rqst = new EchoRequest
             rqst.setMessage(`Hello ${count}`)
             this.globule.echoService.echo(rqst, {
@@ -470,7 +471,8 @@ export class SystemMonitor extends HTMLElement {
             })
         }
         
-        sayHello(1000)
+        sayHello(1000)*/
+        
         
 
 

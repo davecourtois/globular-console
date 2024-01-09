@@ -5,7 +5,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build && /home/dave/Documents/globulario/Globular/Globular deploy -u=sa -p=adminadmin -name=globular-console -a=globule-dell.globular.cloud -path=dist",
+    "build": "ng build && /home/dave/Documents/github.com/globulario/Globular/Globular deploy -u=sa -p=adminadmin -name=globular-console -a=globule-ryzen.globular.cloud -path=dist",
     "watch": "ng build --watch --configuration development ",
     "test": "ng test"
   },
@@ -37,7 +37,7 @@
     "@polymer/paper-tooltip": "^3.0.1",
     "@polymer/polymer": "^3.5.1",
     "@polymer/paper-tabs": "^3.1.0",
-    "globular-web-client": "^1.1.366",
+    "globular-web-client": "^1.1.368",
     "jwt-decode": "^3.1.2",
     "rxjs": "~7.8.0",
     "toastify-js": "^1.12.0",

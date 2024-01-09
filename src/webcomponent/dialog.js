@@ -139,7 +139,7 @@ export class Dialog extends HTMLElement {
 
         .dialog_content{
             flex-grow: 1;
-            overflow: auto;
+            /*overflow: auto;*/
             width: 100%;
             height: 100%;
         }

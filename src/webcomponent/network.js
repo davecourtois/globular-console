@@ -10,10 +10,11 @@ import "@polymer/paper-spinner/paper-spinner.js";
 
 import { SystemMonitor } from "./systemMonitor.js"
 import { ConfigurationManager } from "./configuration.js"
-
 import { Globular } from 'globular-web-client';
 import { getAvailableHostsRequest } from 'globular-web-client/admin/admin_pb';
 import { displayError, displaySuccess } from './utility';
+import { AppComponent } from '../app/app.component';
+
 
 let scanFct = (row) => {
 
@@ -29,6 +30,7 @@ let scanFct = (row) => {
 
     // I will test if the address is valid.
     let url = window.location.protocol + address + "/config"
+
     let globule = new Globular(url, () => {
         // now I will scan the local network and try to find other globules.
         let rqst = new getAvailableHostsRequest()
@@ -246,16 +248,32 @@ export class NetworkAddressManager extends HTMLElement {
     connectedCallback() {
         // I will load the addresses from the local storage.
         let addresses = localStorage.getItem("addresses")
-
+        let rows = []
         if (addresses) {
             addresses = JSON.parse(addresses)
             for (let i = 0; i < addresses.length; i++) {
                 let row = this.createRow(addresses[i])
                 row.querySelector('input').value = addresses[i]
-                // I will scan the address.
-                scanFct(row)
+                rows.push(row)
             }
         }
+
+        if (AppComponent.hosts.length > 0) {
+            console.log("Globules already found...", AppComponent.hosts)
+            AppComponent.hosts.forEach((host) => {
+                let event = new CustomEvent('displayHostEvent', { detail: { host: host } });
+                document.dispatchEvent(event);
+            }
+            );
+
+        } else {
+            rows.forEach((row) => {
+                scanFct(row)
+            });
+        }
+
+
+
     }
 }
 
@@ -337,7 +355,8 @@ export class GlobulesManager extends HTMLElement {
 
         // I will test if the panel is not already in the list.
         let id = "_" + host.getMac().replace(/:/g, "-")
-        let hostPanel = this.querySelector('#' + id)
+        let hostPanel = document.querySelector('#' + id)
+
         if (!hostPanel) {
             // I will create the host panel.
             hostPanel = document.createElement("globular-host-panel")
@@ -497,8 +516,20 @@ export class HostPanel extends HTMLElement {
                 return
             }
 
+            // here I will emit globule evt.
+            let event = new CustomEvent('globule_connection_evt', { detail: { globule: this.globule } });
+            document.dispatchEvent(event);
+
             hostname = this.globule.config.Name.split(":")[0]
             this.shadowRoot.querySelector("#host-name").innerHTML = hostname
+
+            // be sure the panel dosent stay in the list.
+            let panels = document.querySelectorAll("globular-host-panel")
+            for (let i = 0; i < panels.length; i++) {
+                if (panels[i].id == this.id) {
+                    panels[i].parentNode.removeChild(panels[i])
+                }
+            }
 
             // keep the host panel as reference in the globule.
             this.globule.hostPanel = this

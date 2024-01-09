@@ -1,4 +1,6 @@
 import { GeneralConfigurationManager } from "./general_configuration.js"
+import { HttpConfigurationManager } from "./http_configuration.js";
+import { SecurityConfigurationManager } from "./security_configuration.js";
 
 /**
  * This class will display the globule manager panel.
@@ -19,12 +21,38 @@ export class ConfigurationManager extends HTMLElement {
       // Innitialisation of the layout.
       this.shadowRoot.innerHTML = `
         <style>
+        /* custom scrollbar */
+         ::-webkit-scrollbar {
+            width: 20px;
+         }
+
+         ::-webkit-scrollbar-track {
+            background-color: transparent;
+         }
+
+         ::-webkit-scrollbar-thumb {
+            background-color: #d6dee1;
+            border-radius: 20px;
+            border: 6px solid transparent;
+            background-clip: content-box;
+            min-height: 30px; /* Set the minimum height of the scroll cursor */
+         }
+
+         ::-webkit-scrollbar-thumb:hover {
+            background-color: #a8bbbf;
+         }
+
         #container {
             background-color: var(--background-color);
             color: var(--primary-text-color);
             border-radius: 0.5rem;
-            height: 100%;
+            /*height: 100%;*/
             display: flex;
+            position: absolute;
+            top: 40px;
+            left: 0px;
+            right: 0px;
+            bottom: 0px;
         }
         .header-icon{
             width: 24px;
@@ -77,7 +105,6 @@ export class ConfigurationManager extends HTMLElement {
             flex-direction: column;
             justify-content: flex-start;
             align-items: stretch;
-            overflow-y: auto;
         }
         #list {
             flex: 1;
@@ -123,6 +150,8 @@ export class ConfigurationManager extends HTMLElement {
             justify-content: flex-start;
             align-items: stretch;
             margin-left: 1rem;
+            overflow: auto;
+
         }
         #main-panel > div {
             flex: 1;
@@ -193,6 +222,12 @@ export class ConfigurationManager extends HTMLElement {
       // Now the various manangers...
       this.generalConfigurationManager = new GeneralConfigurationManager(this.globule)
 
+      // Now the http manager 
+      this.httpConfigurationManager = new HttpConfigurationManager(this.globule)
+
+      // Now the security manager
+      this.securityConfigurationManager = new SecurityConfigurationManager(this.globule)
+
       // I will add the manager to the slot depending on the selected item.
       this.list = this.shadowRoot.querySelector("#list")
       this.list.addEventListener("click", (event) => {
@@ -209,11 +244,22 @@ export class ConfigurationManager extends HTMLElement {
                   // add the general manager.
                   this.appendChild(this.generalConfigurationManager)
                   break;
+               case "Http(s)":
+                  // add the http manager.
+                  this.appendChild(this.httpConfigurationManager)
+                  break;
+               case "Security":
+                  // add the security manager.
+                  this.appendChild(this.securityConfigurationManager)
+                  break;
                default:
                   break;
             }
          }
       })
+
+      // set as default the general manager.
+      this.appendChild(this.generalConfigurationManager)
 
    }
 
