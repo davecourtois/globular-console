@@ -741,16 +741,149 @@ export class ServiceDesciptor extends HTMLElement {
         return comment
     }
 
+    // This will display the enum.
+    displayEnum(enumBody) {
+        let fragment = `
+        <div style= "display: table; padding-left: 1rem;">
+            <div style="display: table-row">
+                <div style="display: table-cell; padding-right: 1rem; font-size: .75rem;">Name</div>
+                <div style="display: table-cell; padding-right: 1rem; font-size: .75rem;">Number</div>
+            </div>
+          `
+
+        enumBody.forEach(element => {
+            fragment +=
+                `<div style="display: table-row">
+            <div style="display: table-cell; padding-right: 1rem;">${element.Ident}</div>
+            <div style="display: table-cell; padding-right: 1rem;">${element.Number}</div>`
+
+            fragment += `</div>` // end of the table row.
+        })
+
+        return fragment + "</div>"
+    }
+
+    displayFieldType(type) {
+        // Number types.
+        if (type == "int32" || type == "int64" || type == "uint32" || type == "uint64" || type == "sint32" || type == "sint64" || type == "fixed32" || type == "fixed64" || type == "sfixed32" || type == "sfixed64" || type == "float" || type == "double") {
+            return type
+        }
+
+        // String types.
+        if (type == "string") {
+            return "string"
+        }
+
+        // Boolean types.
+        if (type == "bool") {
+            return "boolean"
+        }
+
+        // Bytes types.
+        if (type == "bytes") {
+            return "bytes"
+        }
+
+        // So here I will test if the type is a message or an enum.
+        let type_fragment = type
+
+        // Here I will retreive the message from the descriptor.
+        let message = null;
+        this.descriptor.ProtoBody.forEach(element => {
+            if (element.MessageName == type) {
+                message = element
+            }
+        });
+
+        if (message != null) {
+            // So here I will check if the type is a message.
+            type_fragment = `
+            <style>
+                iron-icon {
+                    --iron-icon-width: 1.2rem;
+                    --iron-icon-height: 1.2rem;
+                    color: var(--secondary-color);
+                    cursor: pointer;
+                    padding-left: .5rem;
+                }
+
+                iron-icon:hover + paper-card {
+                    display: block;
+                }
+
+                paper-card {
+                    padding: 1rem;
+                    background-color: var(--surface-color);
+                    border-radius: 0.5rem;
+                    box-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.2);
+                    z-index: 1;
+                    display: none;
+                    position: absolute; 
+                    top: 24px; 
+                    left: 12px;
+                }
+
+            </style>
+            <div style="display: flex; flex-direction: row; align-items: center;">
+                <span>${type}</span>
+                <div style="position: relative; display: flex; flex-direction: row; align-items: center;">
+                    <iron-icon icon="icons:info-outline" style="padding-left: .5rem; cursor: pointer;"></iron-icon>
+                    <paper-card style="">
+                        ${this.displayFieldFields(message.MessageBody)}
+                    </paper-card>
+                </div>
+            </div>
+        `
+        } else {
+
+            // So here I will check if the type is an enum.
+            let enumType = null;
+            this.descriptor.ProtoBody.forEach(element => {
+                if (element.EnumName == type) {
+                    enumType = element
+                }
+            });
+
+            if (enumType != null) {
+                type_fragment = `
+                <style>
+    
+                    paper-card {
+                        padding: 1rem;
+                        background-color: var(--surface-color);
+                        border-radius: 0.5rem;
+                        box-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.2);
+                        z-index: 1;
+                        display: none;
+                        position: absolute; 
+                        top: 24px; 
+                        left: 12px;
+                    }
+    
+                </style>
+                <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                    <span>${type}</span>
+                    <div style="font-size: .85rem;">
+                        ${this.displayEnum(enumType.EnumBody)}
+                    </div>
+                </div>
+            `
+            }
+        }
+
+        return type_fragment
+    }
+
     displayFieldFields(fields) {
         if (!fields) {
             return ""
         }
 
         // Display the one of...
-        if(fields[0].OneofFields){
+        if (fields[0].OneofFields) {
             let oneof = fields[0].OneofName
             fields = fields[0].OneofFields // one of fields.
-            for(let i = 0; i < fields.length; i++){
+            for (let i = 0; i < fields.length; i++) {
                 fields[i].FieldName = oneof + " -> " + fields[i].FieldName
                 fields[i].IsOptional = "false"
                 fields[i].IsRepeated = "false"
@@ -774,11 +907,11 @@ export class ServiceDesciptor extends HTMLElement {
           `
 
         fields.forEach(field => {
-           
+
             fragment +=
                 `<div style="display: table-row">
             <div style="display: table-cell; padding-right: 1rem;">${field.FieldName}</div>
-            <div style="display: table-cell; padding-right: 1rem;">${field.Type}</div>
+            <div style="display: table-cell; padding-right: 1rem;">${this.displayFieldType(field.Type)}</div>
             <div style="display: table-cell; padding-right: 1rem;">${field.IsRepeated}</div>
             <div style="display: table-cell; padding-right: 1rem;">${field.IsRequired}</div>
             <div style="display: table-cell; padding-right: 1rem;">${field.IsOptional}</div>`
@@ -786,14 +919,14 @@ export class ServiceDesciptor extends HTMLElement {
             if (field.InlineComment) {
                 let inlineComment = field.InlineComment.Raw.replaceAll("//", "").trim()
                 if (inlineComment != "") {
-                    inlineComment = "<div style='display: table-cell; font-style: italic; font-weight: 200; font-size: .9rem;'>" + inlineComment + "</div>"
+                    inlineComment = "<div style='display: table-cell; font-style: italic; font-weight: 200; font-size: .9rem; min-width: 200px;'>" + inlineComment + "</div>"
                 }
                 fragment += inlineComment
-            }else{
+            } else {
                 fragment += `<div style="display: table-cell; padding-right: 1rem;"></div>`
             }
-            
-            fragment +=`</div>` // end of the table row.
+
+            fragment += `</div>` // end of the table row.
         })
 
         return fragment + "</div>"
@@ -817,7 +950,7 @@ export class ServiceDesciptor extends HTMLElement {
         let response_fragment = `
             <div class="title" style="padding-top: 0.5rem; font-size: 1rem; padding-left: 1rem;">Response</div>
             <div style="display: flex; flex-direction: column; padding-left: 1rem;">
-                <div class="sub-title" style="font-size: 1rem; padding-left: 1rem; display: flex; flex-direction: row; align-items: center;">${rsp.MessageName} <span style="padding-left: 1rem; color: var(--secondary-color); display: ${response.IsStream ? 'block': 'none'};">(stream)</span></div>
+                <div class="sub-title" style="font-size: 1rem; padding-left: 1rem; display: flex; flex-direction: row; align-items: center;">${rsp.MessageName} <span style="padding-left: 1rem; color: var(--secondary-color); display: ${response.IsStream ? 'block' : 'none'};">(stream)</span></div>
         `
 
         // display the response fields.
@@ -857,7 +990,7 @@ export class ServiceDesciptor extends HTMLElement {
         let request_fragment = `
             <div class="title" style="padding-top: 0.5rem; font-size: 1rem; padding-left: 1rem;">Request</div>
             <div style="display: flex; flex-direction: column; padding-left: 1rem;">
-                <div class="sub-title" style="font-size: 1rem; padding-left: 1rem; display: flex; flex-direction: row; align-items: center;">${rqst.MessageName} <span style="padding-left: 1rem; color: var(--secondary-color); display: ${request.IsStream ? 'block': 'none'};">(stream)</span></div>
+                <div class="sub-title" style="font-size: 1rem; padding-left: 1rem; display: flex; flex-direction: row; align-items: center;">${rqst.MessageName} <span style="padding-left: 1rem; color: var(--secondary-color); display: ${request.IsStream ? 'block' : 'none'};">(stream)</span></div>
         `
 
         // display the request fields.
