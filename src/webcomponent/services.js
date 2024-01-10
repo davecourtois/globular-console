@@ -691,7 +691,7 @@ export class ServiceDesciptor extends HTMLElement {
         </style>
 
         <div id="content">
-            <div class="title">API</div>
+            <div class="title" style="display: flex; align-items:center;">API <span id="number-of-methods" style="font-size: .95rem; padding-left: .5rem;"></span></div>
             <div class="sub-title"></div>
             <div style="display: flex; flex-direction: column;"> 
                 <slot name="api"></slot>
@@ -708,6 +708,13 @@ export class ServiceDesciptor extends HTMLElement {
             }
             this.displayAPI(this.serviceDescriptor.ServiceBody)
         }
+
+        // display the number of methods.
+        let number_of_methods = this.shadowRoot.querySelector("#number-of-methods")
+        // the number of methods is the number of child with slot name api.
+        let number = this.querySelectorAll("[slot='api']").length
+
+        number_of_methods.innerHTML = "(" + number + ")"
     }
 
     // This will return the string with the comments.
@@ -735,6 +742,22 @@ export class ServiceDesciptor extends HTMLElement {
     }
 
     displayFieldFields(fields) {
+        if (!fields) {
+            return ""
+        }
+
+        // Display the one of...
+        if(fields[0].OneofFields){
+            let oneof = fields[0].OneofName
+            fields = fields[0].OneofFields // one of fields.
+            for(let i = 0; i < fields.length; i++){
+                fields[i].FieldName = oneof + " -> " + fields[i].FieldName
+                fields[i].IsOptional = "false"
+                fields[i].IsRepeated = "false"
+                fields[i].IsRequired = "false"
+            }
+        }
+
         // options are IsReapeted, IsRequired, IsOptional
         // The options will be displayed as css table whit
         // the following columns: reapeated, required, optional,
@@ -751,7 +774,7 @@ export class ServiceDesciptor extends HTMLElement {
           `
 
         fields.forEach(field => {
-            console.log(field.InlineComment)
+           
             fragment +=
                 `<div style="display: table-row">
             <div style="display: table-cell; padding-right: 1rem;">${field.FieldName}</div>
@@ -794,7 +817,7 @@ export class ServiceDesciptor extends HTMLElement {
         let response_fragment = `
             <div class="title" style="padding-top: 0.5rem; font-size: 1rem; padding-left: 1rem;">Response</div>
             <div style="display: flex; flex-direction: column; padding-left: 1rem;">
-                <div class="sub-title" style="font-size: 1rem; padding-left: 1rem;">${rsp.MessageName}</div>
+                <div class="sub-title" style="font-size: 1rem; padding-left: 1rem; display: flex; flex-direction: row; align-items: center;">${rsp.MessageName} <span style="padding-left: 1rem; color: var(--secondary-color); display: ${response.IsStream ? 'block': 'none'};">(stream)</span></div>
         `
 
         // display the response fields.
@@ -811,7 +834,7 @@ export class ServiceDesciptor extends HTMLElement {
         response_fragment += this.displayFieldFields(rsp.MessageBody)
 
         return response_fragment + `
-                </div> </div>
+                </div> </div> </div>
                 `
     }
 
@@ -834,7 +857,7 @@ export class ServiceDesciptor extends HTMLElement {
         let request_fragment = `
             <div class="title" style="padding-top: 0.5rem; font-size: 1rem; padding-left: 1rem;">Request</div>
             <div style="display: flex; flex-direction: column; padding-left: 1rem;">
-                <div class="sub-title" style="font-size: 1rem; padding-left: 1rem;">${rqst.MessageName}</div>
+                <div class="sub-title" style="font-size: 1rem; padding-left: 1rem; display: flex; flex-direction: row; align-items: center;">${rqst.MessageName} <span style="padding-left: 1rem; color: var(--secondary-color); display: ${request.IsStream ? 'block': 'none'};">(stream)</span></div>
         `
 
         // display the request fields.
@@ -851,7 +874,7 @@ export class ServiceDesciptor extends HTMLElement {
         request_fragment += this.displayFieldFields(rqst.MessageBody)
 
         return request_fragment + `
-                </div> </div>
+                </div> </div> </div>
         `
     }
 
@@ -867,9 +890,15 @@ export class ServiceDesciptor extends HTMLElement {
 
 
                 let method_fragment = `
-                <div class="title">${method.RPCName}</div>
-                <div class="sub-title">${comment}</div>
-                <div style="display: flex; flex-direction: column;">
+
+                <div style="display: flex; align-items: center;">
+                    <paper-icon-button id="collapse-btn" icon="icons:expand-more" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
+                    <div class="title" style="font-size: 1rem;">${method.RPCName}</div>
+                </div>
+                
+                <iron-collapse class="subitems" id="collapse-panel" style="display: flex; flex-direction: column; padding-left: 2rem;">
+                    <div class="sub-title">${comment}</div>
+                    <div style="display: flex; flex-direction: column;">
                 `
 
                 // display the request.
@@ -879,16 +908,29 @@ export class ServiceDesciptor extends HTMLElement {
                 method_fragment += this.displayResponse(method.RPCResponse)
 
                 method_fragment += `
+                    </iron-collapse>
                 </div>
                 `
 
                 let div = document.createElement('div')
-                div.classList.add("section")
                 div.innerHTML = method_fragment
                 div.style.paddingTop = "0"
                 div.style.paddingBottom = "0"
                 div.slot = "api"
                 this.appendChild(div)
+
+                // now the colloapse button.
+                let collapse_btn = div.querySelector("#collapse-btn")
+                let collapse_panel = div.querySelector("#collapse-panel")
+                collapse_btn.onclick = (evt) => {
+                    evt.stopPropagation();
+                    if (!collapse_panel.opened) {
+                        collapse_btn.icon = "expand-less"
+                    } else {
+                        collapse_btn.icon = "expand-more"
+                    }
+                    collapse_panel.toggle();
+                }
 
             }
         })
