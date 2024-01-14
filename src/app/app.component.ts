@@ -7,6 +7,13 @@ import '../webcomponent/dialog'
 import '../webcomponent/network'
 import '../webcomponent/cluster.js';
 import '../webcomponent/services.js';
+import '../webcomponent/users.js';
+import '../webcomponent/applications.js';
+import '../webcomponent/groups.js';
+import '../webcomponent/roles.js';
+import '../webcomponent/permissions.js';
+import '../webcomponent/organizations.js';
+
 
 @Component({
   selector: 'app-root',

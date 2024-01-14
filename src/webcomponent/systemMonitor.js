@@ -454,12 +454,12 @@ export class SystemMonitor extends HTMLElement {
     connectedCallback() {
         
         // Test...
-        
-        /*let sayHello = (count) =>{
+        let sayHello = (count) =>{
             let rqst = new EchoRequest
             rqst.setMessage(`Hello ${count}`)
             this.globule.echoService.echo(rqst, {
-                domain: this.globule.config.Domain
+                domain: this.globule.config.Domain,
+                routing: "round-robin" // test the round robin routing...
             }).then(rsp => {
                 console.log(rsp.getMessage())
                 if (count > 0){
@@ -471,11 +471,8 @@ export class SystemMonitor extends HTMLElement {
             })
         }
         
-        sayHello(1000)*/
+        sayHello(1000)
         
-        
-
-
         this.shadowRoot.querySelector(`.title`).innerHTML = `System Monitor ${this.globule.config.Name}@${this.globule.config.Domain} Globular ${this.globule.config.Version}`
 
         let address =  window.location.protocol + "//"

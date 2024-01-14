@@ -68,7 +68,7 @@ export class ClusterManager extends HTMLElement {
         </style>
         <div id="content">
             <div style="display: flex; flex-direction: row; width: 100%; align-items: center;">
-                <span id="title">Cluster <span id="cluster-domain"></span></span>
+                <span id="title"><span id="cluster-domain"></span></span>
                 
                 <paper-icon-button id="info-btn" icon="icons:info-outline"></paper-icon-button>
             </div>

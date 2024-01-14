@@ -51,7 +51,7 @@ export class ServicesManager extends HTMLElement {
         </style>
         <div id="content">
             <div style="display: flex; flex-direction: row; width: 100%; align-items: center;">
-                <span id="title">Cluster Services</span>
+                <span id="title">Services</span>
                 <paper-icon-button id="info-btn" icon="icons:info-outline" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
             </div>
             <div id="services">
@@ -260,12 +260,59 @@ export class ServiceManager extends HTMLElement {
 
         this.displayGeneralInfos()
         this.displayInstances()
-        this.displayServiceDescription()
+
+        this.getServicePermissions((permissions) => {
+            this.displayServiceDescription(permissions)
+        })
+    }
+
+    getServicePermissions(callback) {
+        if (this.service == null) {
+            return
+        }
+
+        if (this.globules.length == 0) {
+            return
+        }
+
+        // I will get the service descriptor from the first globule.
+        let globule = this.globules[0]
+
+        let id = "_" + this.service.Id.replaceAll(":", "_") + "_descriptor"
+
+        if (this.querySelector("#" + id) != null) {
+            return
+        }
+
+        let address = globule.config.Name + "." + globule.config.Domain
+        if (window.location.protocol == "http:") {
+            address = "http://" + address + ":" + globule.config.PortHttp
+        } else {
+            address = "https://" + address + ":" + globule.config.PortHttps
+        }
+
+        // I will get the service descriptor.
+        address += "/get_service_permissions?id=" + this.service.Id
+
+        // I will get the service descriptor.
+
+        let xttpRequest = new XMLHttpRequest();
+        xttpRequest.open("GET", address, true);
+        xttpRequest.responseType = "json";
+
+        xttpRequest.onload = () => {
+            let permissions = xttpRequest.response
+            callback(permissions)
+        }
+
+        xttpRequest.send();
+
+
     }
 
 
     // Display the service description.
-    displayServiceDescription() {
+    displayServiceDescription(permissions) {
         if (this.service == null) {
             return
         }
@@ -311,7 +358,7 @@ export class ServiceManager extends HTMLElement {
                     }
 
                     // Create a new service descriptor.
-                    let descriptor = new ServiceDesciptor(element, serviceDescriptor)
+                    let descriptor = new ServiceDesciptor(element, serviceDescriptor, permissions)
 
                     // Add the descriptor to the service manager.
                     descriptor.id = id
@@ -649,11 +696,12 @@ export class ServiceDesciptor extends HTMLElement {
     // attributes.
 
     // Create the applicaiton view.
-    constructor(serviceDescriptor, descriptor) {
+    constructor(serviceDescriptor, descriptor, permissions) {
         super()
 
         this.descriptor = descriptor
         this.serviceDescriptor = serviceDescriptor
+        this.permissions = permissions
 
         // Set the shadow dom.
         this.attachShadow({ mode: 'open' });
@@ -829,7 +877,7 @@ export class ServiceDesciptor extends HTMLElement {
                 <div style="position: relative; display: flex; flex-direction: row; align-items: center;">
                     <iron-icon icon="icons:info-outline" style="padding-left: .5rem; cursor: pointer;"></iron-icon>
                     <paper-card style="">
-                        ${this.displayFieldFields(message.MessageBody)}
+                        ${this.displayFieldFields(message.MessageBody, 1)}
                     </paper-card>
                 </div>
             </div>
@@ -874,7 +922,7 @@ export class ServiceDesciptor extends HTMLElement {
         return type_fragment
     }
 
-    displayFieldFields(fields) {
+    displayFieldFields(fields, level = 0) {
         if (!fields) {
             return ""
         }
@@ -891,6 +939,15 @@ export class ServiceDesciptor extends HTMLElement {
             }
         }
 
+        // test if I need to display the permissions column.
+        let displayPermissions = false;
+        for (let i = 0; i < fields.length; i++) {
+            if (fields[i].Permission) {
+                displayPermissions = true
+                break
+            }
+        }
+
         // options are IsReapeted, IsRequired, IsOptional
         // The options will be displayed as css table whit
         // the following columns: reapeated, required, optional,
@@ -902,6 +959,7 @@ export class ServiceDesciptor extends HTMLElement {
                 <div style="display: table-cell; padding-right: 1rem; font-size: .75rem;">Repeated</div>
                 <div style="display: table-cell; padding-right: 1rem; font-size: .75rem;">Required</div>
                 <div style="display: table-cell; padding-right: 1rem; font-size: .75rem;">Optional</div>
+                <div style="display: ${displayPermissions ? 'table-cell' : 'none'}; padding-right: 1rem; font-size: .75rem;">Permission</div>
                 <div style="display: table-cell; padding-right: 1rem; font-size: .75rem;">Comment</div>
             </div>
           `
@@ -911,17 +969,24 @@ export class ServiceDesciptor extends HTMLElement {
             fragment +=
                 `<div style="display: table-row">
             <div style="display: table-cell; padding-right: 1rem;">${field.FieldName}</div>
-            <div style="display: table-cell; padding-right: 1rem;">${this.displayFieldType(field.Type)}</div>
+            <div style="display: table-cell; padding-right: 1rem;">${level == 0 ? this.displayFieldType(field.Type) : field.Type}</div>
             <div style="display: table-cell; padding-right: 1rem;">${field.IsRepeated}</div>
             <div style="display: table-cell; padding-right: 1rem;">${field.IsRequired}</div>
-            <div style="display: table-cell; padding-right: 1rem;">${field.IsOptional}</div>`
+            <div style="display: table-cell; padding-right: 1rem;">${field.IsOptional}</div>
+            <div style="display:  ${displayPermissions ? 'table-cell' : 'none'}; padding-right: 1rem;">${field.Permission ? field.Permission : ""}</div>`
 
             if (field.InlineComment) {
                 let inlineComment = field.InlineComment.Raw.replaceAll("//", "").trim()
                 if (inlineComment != "") {
-                    inlineComment = "<div style='display: table-cell; font-style: italic; font-weight: 200; font-size: .9rem; min-width: 200px;'>" + inlineComment + "</div>"
+                    inlineComment = "<div style='display: table-cell; font-style: italic; font-weight: 200; font-size: .85rem; min-width: 200px;'>" + inlineComment + "</div>"
                 }
                 fragment += inlineComment
+            } else if (field.Comments) {
+                let comments = this.displayComments(field.Comments)
+                if (comments != "") {
+                    comments = "<div style='display: table-cell; font-style: italic; font-weight: 200; font-size: .85rem; min-width: 200px;'>" + comments + "</div>"
+                }
+                fragment += comments
             } else {
                 fragment += `<div style="display: table-cell; padding-right: 1rem;"></div>`
             }
@@ -973,7 +1038,7 @@ export class ServiceDesciptor extends HTMLElement {
 
 
     // This will return the string with the request information.
-    displayRequest(request) {
+    displayRequest(methodName, request) {
         let rqst = null;
 
         // firt of all I will retreive the request from the descriptor.
@@ -1002,6 +1067,19 @@ export class ServiceDesciptor extends HTMLElement {
 
         if (rqst.MessageBody == null) {
             return request_fragment + `None</div> </div>`
+        }
+
+        // so here i will set the permission info for each field.
+        if (this.permissions != null) {
+            this.permissions.forEach(permission => {
+                if (permission) {
+                    if (permission.action.endsWith(methodName)) {
+                        permission.resources.forEach(resource => {
+                            rqst.MessageBody[resource.index].Permission = resource.permission
+                        })
+                    }
+                }
+            })
         }
 
         request_fragment += this.displayFieldFields(rqst.MessageBody)
@@ -1034,8 +1112,11 @@ export class ServiceDesciptor extends HTMLElement {
                     <div style="display: flex; flex-direction: column;">
                 `
 
+                // so here I will retreive the permissions from the service.
+
+
                 // display the request.
-                method_fragment += this.displayRequest(method.RPCRequest)
+                method_fragment += this.displayRequest(method.RPCName, method.RPCRequest)
 
                 // display the response.
                 method_fragment += this.displayResponse(method.RPCResponse)
