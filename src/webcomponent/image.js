@@ -1,3 +1,4 @@
+import { set } from "@polymer/polymer/lib/utils/path";
 import { AppComponent } from "../app/app.component";
 
 class AvatarChanger extends HTMLElement {
@@ -15,22 +16,20 @@ class AvatarChanger extends HTMLElement {
               /* Your CSS styles go here */
               .container{
                 position: relative;
-                width: 100%;
-                height: 100%;
               }
 
               .wrap{
                 text-align: center;
-                width: 300px;
+                width: 600px;
               }
 
               .profile{
                 margin: auto;
                 width: 95%;
-                max-width: 400px;
+                max-width: 600px;
                 background: var(--surface-color);
                 border-radius: 10px;
-                padding: 15px 10px 30px 10px;
+                padding: 15px 10px 5px 10px;
                 position: relative;
                 box-shadow: 0px 1px 7px rgba(2,2,2,0.2);
               }
@@ -72,7 +71,7 @@ class AvatarChanger extends HTMLElement {
               .avatar{
                 width: 96px;
                 height: 96px;
-                border-radius: 100%;
+                border-radius: 5px;
                 border: 2px solid #fff;
                 margin: 10px auto;
                 position: relative;
@@ -110,6 +109,9 @@ class AvatarChanger extends HTMLElement {
                 z-index: -1;
                 line-height: 96px;
                 color: #999;
+              }
+              #preview.hide-after::after {
+                display: none;
               }
               .avatar_img--loading{
                 opacity: 0;
@@ -203,6 +205,32 @@ class AvatarChanger extends HTMLElement {
                 
               }
 
+              #selector{
+                display: flex;
+                flex-wrap: wrap;
+                padding: 15px;
+                justify-content: center;
+              }
+
+              #selector > img {
+                width: 50px;
+                height: 50px;
+                padding: 3px;
+                border: 2px solid transparent;
+              }
+
+              #selector > img:hover {
+                border: 2px solid var(--divider-color);
+                border-radius: 5px;
+                cursor: pointer;
+              }
+
+              .actions{
+                display: flex;
+                justify-content: flex-end;
+                padding: 10px;
+              }
+
             </style>
             <div class="container">
               <div class="wrap">
@@ -213,7 +241,8 @@ class AvatarChanger extends HTMLElement {
                     <a class="next-btn btn fa fa-caret-right" tabindex="3"></a>
                   </div>
                   <div class="avatar" id="avatar">
-                    <div id="preview"><img src="" id="avatar-image" class="avatar_img">
+                    <div id="preview">
+                      <img src="" id="avatar-image" class="avatar_img">
                     </div>
                     <div class="avatar_upload" >
                       <label class="upload_label">Upload
@@ -223,6 +252,12 @@ class AvatarChanger extends HTMLElement {
                   </div>
                   <div class="nickname">
                     <span id="name" tabindex="4" data-key="1" contenteditable="true"></span>
+                  </div>
+                  <div id="selector">
+                  </div>
+                  <div class="actions">
+                    <paper-button id="set-btn" class="btn">Set</paper-button>
+                    <paper-button id="cancel-btn" class="btn">Cancel</paper-button>
                   </div>
                 </div>
               </div>
@@ -236,25 +271,7 @@ class AvatarChanger extends HTMLElement {
     this.avatar_name = this.shadowRoot.querySelector("#name");
 
     // The default avatar
-    this.srcList = [
-      /*
-      {
-        name: "Cosmos",
-        src: encodeURIComponent("https://source.unsplash.com/rTZW4f02zY8/150x150")
-      },
-      {
-        name: "Walrus",
-        src: encodeURIComponent("https://source.unsplash.com/h13Y8vyIXNU/150x150")
-      },
-      {
-        name: "Flowers",
-        src: encodeURIComponent("https://source.unsplash.com/PwWkzeJeJZE/150x150")
-      },
-      {
-        name: "Dog",
-        src: encodeURIComponent("https://source.unsplash.com/oCJuJQqvCzc/150x150")
-      }*/
-    ]
+    this.srcList = []
 
     // The current avatar
     this.activeKey = 1
@@ -284,6 +301,14 @@ class AvatarChanger extends HTMLElement {
       this.changeAvatarName(e, e.target.dataset.key, e.target.textContent);
     });
 
+    this.shadowRoot.querySelector("#set-btn").addEventListener("click", () => {
+      this.dispatchEvent(new CustomEvent('image-changed', { detail: { name: this.avatar_name.textContent, src: this.srcList[this.activeKey].src } }));
+    });
+
+    this.shadowRoot.querySelector("#cancel-btn").addEventListener("click", () => {
+      this.dispatchEvent(new CustomEvent('cancel'));
+    });
+    
     this.shadowRoot.querySelector("#upload").addEventListener("change", (evt) => {
 
       // Init required variables
@@ -364,6 +389,9 @@ class AvatarChanger extends HTMLElement {
           // console.log(request.responseText)
           let result = JSON.parse(request.responseText)
           result.images.forEach((image) => {
+            if(image.startsWith('/')){
+              image = image.substring(1)
+            }
 
             let src = url + "/" + image
             const filename = image.split('/').pop();
@@ -376,6 +404,22 @@ class AvatarChanger extends HTMLElement {
             const name = nameParts[0];
             this.srcList.push({ name: name, src: encodeURIComponent(src) })
 
+            // Now I will add the image to the selector
+            let img = document.createElement("img");
+            img.src = decodeURIComponent(src);
+            img.className = "avatar_img--loading";
+            img.onload = function () {
+              img.classList.add("avatar_img");
+              img.classList.remove("avatar_img--loading");
+            }
+
+            let selector = this.shadowRoot.querySelector("#selector");
+            selector.appendChild(img);
+            let index = selector.children.length - 1;
+
+            img.addEventListener("click", () => {
+              this.showByKey(index);
+            });
           })
 
           this.showByKey(0);
@@ -446,9 +490,16 @@ class AvatarChanger extends HTMLElement {
     var img = document.createElement("img");
     img.src = decodeURIComponent(_on.src);
     img.className = "avatar_img--loading";
-    img.onload = function () {
-      img.classList.add("avatar_img");
+    this.preview.classList.remove('hide-after');
+
+    img.onload =  () =>{
+      setTimeout(() => {
+        img.classList.add("avatar_img");
+        this.preview.classList.add('hide-after');
+        img.classList.remove("avatar_img--loading");
+      }, 200);
     }
+
     this.avatar_name.textContent = _on.name;
     this.avatar_name.setAttribute("data-key", _next);
     this.preview.appendChild(img);

@@ -31,7 +31,9 @@ let scanFct = (row) => {
     // I will test if the address is valid.
     let url = window.location.protocol + address + "/config"
 
+    // I will test if the globule is already in the list.
     let globule = new Globular(url, () => {
+
         // now I will scan the local network and try to find other globules.
         let rqst = new getAvailableHostsRequest()
         globule.adminService.getAvailableHosts(rqst, {}).then((response) => {
@@ -39,7 +41,6 @@ let scanFct = (row) => {
             document.querySelector("globular-cluster-manager").clear()
 
             // I will keep the globule in the local store
-            displaySuccess("Globule found at " + globule.address)
             for (let i = 0; i < response.getHostsList().length; i++) {
                 let host = response.getHostsList()[i]
                 let event = new CustomEvent('displayHostEvent', { detail: { host: host } });
@@ -246,6 +247,7 @@ export class NetworkAddressManager extends HTMLElement {
     }
 
     connectedCallback() {
+
         // I will load the addresses from the local storage.
         let addresses = localStorage.getItem("addresses")
         let rows = []
@@ -259,20 +261,16 @@ export class NetworkAddressManager extends HTMLElement {
         }
 
         if (AppComponent.hosts.length > 0) {
-            console.log("Globules already found...", AppComponent.hosts)
             AppComponent.hosts.forEach((host) => {
                 let event = new CustomEvent('displayHostEvent', { detail: { host: host } });
                 document.dispatchEvent(event);
-            }
-            );
+            });
 
         } else {
             rows.forEach((row) => {
                 scanFct(row)
             });
         }
-
-
 
     }
 }

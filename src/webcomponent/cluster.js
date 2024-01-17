@@ -265,14 +265,12 @@ export class ClusterManager extends HTMLElement {
             this.innerHTML = ""
 
             this.appendChild(this.master.hostPanel)
-            console.log("append master ", this.master.config.Mac)
 
             this.master.config.Peers.forEach((peer) => {
                 let globule = this.globules["_" + peer.Mac.replace(/:/g, "-")]
 
                 if (globule != null) {
                     let hostPanel = globule.hostPanel
-                    
                     if (globule.peer == undefined) {
 
                         // I will add the host panel.
@@ -447,6 +445,7 @@ export class ClusterManager extends HTMLElement {
 
         // I will retreive the host panel...
         if (globule.hostPanel == null) {
+            console.log("host panel not found for globule ", globule.config.Name )
             return
         }
 

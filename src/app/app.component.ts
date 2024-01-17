@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { Globular } from 'globular-web-client';
 import '../webcomponent/applicationLayout'
 import '../webcomponent/markdown'
 import '../webcomponent/themeEditor'
@@ -13,6 +14,7 @@ import '../webcomponent/groups.js';
 import '../webcomponent/roles.js';
 import '../webcomponent/permissions.js';
 import '../webcomponent/organizations.js';
+import { getAvailableHostsRequest } from 'globular-web-client/admin/admin_pb';
 
 
 @Component({
@@ -36,6 +38,38 @@ export class AppComponent {
 
   constructor() {
 
+    // I load the globules from the local storage.
+    let addresses = []
+    let item = localStorage.getItem("globules")
+    if (item == null) {
+      addresses = []
+    } else {
+      addresses = JSON.parse(item)
+    }
+
+    // I will initialize the globules from the local storage.
+    addresses.forEach((address: string) => {
+
+      // I will test if the address is valid.
+      let url = address + "/config"
+
+      let globule = new Globular(url, () => {
+        // now I will scan the local network and try to find other globules.
+        if (globule == null) {
+          return
+        }
+
+        // throw globule_connection_evt 
+        let event = new CustomEvent('globule_connection_evt', { detail: { globule: globule } });
+        document.dispatchEvent(event);
+
+      }, err => {
+        console.log("error", err)
+      })
+
+    });
+
+    // I will scan the local network and try to find other globules.
     document.addEventListener('displayHostEvent', (evt: any) => {
       let host = evt['detail']['host'];
       let exist = false;
@@ -46,7 +80,7 @@ export class AppComponent {
       }
       );
       // keep the host in memory
-      if(!exist) {
+      if (!exist) {
         AppComponent.hosts.push(host);
       }
     });
@@ -63,11 +97,32 @@ export class AppComponent {
         if (g.config.Name == globule.config.Name) {
           exist = true;
         }
-      }
-      );
+      });
 
       if (!exist) {
         AppComponent.globules.push(globule);
+
+        // I will keep the address in the local store.
+        let item = localStorage.getItem("globules")
+        if (item == null) {
+          addresses = []
+        } else {
+          addresses = JSON.parse(item)
+        }
+
+        // I will add the address if it is not already in the list.
+        let address = globule.config.Name + "." + globule.config.Domain
+        if (window.location.protocol == "https:") {
+          address = "https://" + address + ":" + globule.config.PortHttps
+        } else {
+          address = "http://" + address + ":" + globule.config.PortHttp
+        }
+
+        if (addresses.indexOf(address) == -1) {
+          addresses.push(address)
+        }
+
+        localStorage.setItem("globules", JSON.stringify(addresses))
       }
     }
     );
@@ -77,3 +132,4 @@ export class AppComponent {
     this.componentLoaded = true;
   }
 }
+

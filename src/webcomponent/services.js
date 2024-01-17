@@ -59,17 +59,27 @@ export class ServicesManager extends HTMLElement {
             </div>
         </div>`
 
-
+        // try to get the globule.
+        let nbTry = 10;
+        let interval = setInterval(() => {
+            if (AppComponent.globules[0] != null) {
+                clearInterval(interval)
+                this.init()
+            }
+            nbTry--
+            if (nbTry == 0) {
+                clearInterval(interval)
+            }
+        }, 1000)
     }
 
     // Called when the element is added to the DOM.
-    connectedCallback() {
+    init() {
         // Add the event listeners.
         let services = {}
 
-        // Now I will get the list of available services on the cluster.
+        // So here I will add the globule to the list of globules.
         AppComponent.globules.forEach(globule => {
-
             // subscribe to the services event.
             if (!globule.updateServiceConfigurationListener) {
                 globule.eventHub.subscribe("update_globular_service_configuration_evt", (uuid) => {
@@ -80,7 +90,6 @@ export class ServicesManager extends HTMLElement {
                     // so here I will publish a custom event.
                     let event = new CustomEvent(`update_${globule.config.Mac}_${service.Id}_configuration_evt`, { detail: service });
                     document.dispatchEvent(event);
-
                 }, false)
             }
 
@@ -226,6 +235,7 @@ export class ServiceManager extends HTMLElement {
                 exist = true
             }
         })
+
 
         if (!exist) {
             this.globules.push(globule)
