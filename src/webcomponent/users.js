@@ -1,7 +1,18 @@
-import { Account, GetAccountRqst, GetAccountsRqst, RegisterAccountRqst, SetAccountRqst } from "globular-web-client/resource/resource_pb";
+import { Account, DeleteAccountRqst, GetAccountRqst, GetAccountsRqst, RegisterAccountRqst, SetAccountRqst } from "globular-web-client/resource/resource_pb";
 import { AvatarChanger } from "./image";
-import { displayAuthentication, displayError, displaySuccess } from "./utility";
+import { displayAuthentication, displayError, displayQuestion, displaySuccess } from "./utility";
 import { AppComponent } from "../app/app.component";
+import { Table } from "./table";
+
+
+// override the the id field to display the profile picture.
+function displayAccountId(a) {
+    //return a.id // on image
+    return `<div class="user-selector" style="display: flex; align-items: center;"><img style="height: 32px; width: 32px;" src="${a["profilePicture"]}"/><span style="margin-left: 1rem; text-decoration: underline;">${a["id"]}</span></div>`
+}
+
+// keep the account id.
+window["displayAccountId"] = displayAccountId
 
 function getBase64FromImageUrl(url) {
     return fetch(url)
@@ -33,7 +44,7 @@ export class UsersManager extends HTMLElement {
     attributeChangedCallback(name, oldValue, newValue) {
         if (name === 'current-user-id') {
             this.currentUserId = newValue
-            if (this.currentUserId != newValue &&  AppComponent.globules[0] != null) {
+            if (this.currentUserId != newValue && AppComponent.globules[0] != null) {
                 this.setCurrentUser(newValue)
             }
         }
@@ -60,7 +71,6 @@ export class UsersManager extends HTMLElement {
                 padding: 1rem;
                 border-radius: 0.5rem;
                 margin: 1rem;
-
                 flex-direction: column;
             }
 
@@ -79,6 +89,20 @@ export class UsersManager extends HTMLElement {
                 margin-right: 1rem;
             }
 
+            #table-container {
+                display: flex;
+                width: fit-content;
+                overflow: hidden;
+                position: relative;
+                padding-bottom: 1px;
+                margin-left: 1rem;
+            }
+
+            td {
+                padding: 0.5rem;
+                max-height: 60px;
+            }
+
         </style>
         <div id="content">
             <div style="display: flex; flex-direction: row; width: 100%; align-items: center;">
@@ -93,34 +117,47 @@ export class UsersManager extends HTMLElement {
 
         <slot name="user"></slot>
 
-        <slot name="users"></slot>
+        <div id="table-container">
+            <globular-table width="800px" display-index="true" visible-data-count="10" row-height="50px"
+            header-background-color="var(--primary-light-color)" 
+            header-text-color="var(--on-primary-light-color)">
+                <span id="title" slot="title">Accounts</span>
+                <span class="field" slot="fields" field="displayAccountId">Id</span>
+                <span class="field" slot="fields" field="firstName">First Name</span>
+                <span class="field" slot="fields" field="lastName">Last Name</span>
+                <span class="field" slot="fields" field="userEmail">Email</span>
+            </globular-table>
+        </div>
         `
 
         // Action on the add button.
         this.shadowRoot.querySelector("#add-btn").addEventListener("click", () => {
-
-            // test if user editor is already present.
-            let userEditor = this.querySelector("globular-user-editor")
-            if (userEditor != null) {
-                // just focus on the user editor.
-                userEditor.setFocus()
-                return
-            }
-
             // Create a new user.
             let a = new Account()
             a.setProfilepicture("https://www.w3schools.com/howto/img_avatar.png")
-
-            userEditor = new UserEditor(a)
-            userEditor.slot = "user"
-            userEditor.id = "user-editor"
             this.currentUserId = "new-user"
+
+            // test if user editor is already present.
+            let userEditor = this.querySelector("globular-user-editor")
+            if (userEditor == null) {
+                // just focus on the user editor.
+                userEditor = new UserEditor(a)
+                userEditor.slot = "user"
+                userEditor.id = "user-editor"
+            } else {
+                userEditor.setAccount(a)
+            }
 
             // Dispatch a custom event when the property changes
             this.dispatchEvent(new CustomEvent('currentUserIdChanged', { detail: this.currentUserId }));
 
             this.appendChild(userEditor)
             userEditor.setFocus()
+        })
+
+        // add the reload users event listener.
+        this.addEventListener("reloadUsers", (e) => {
+            this.init()
         })
 
         // try to get the globule.
@@ -147,7 +184,7 @@ export class UsersManager extends HTMLElement {
     init() {
 
         // Get the users.
-        if(this.currentUserId != null && this.currentUserId != "") {
+        if (this.currentUserId != null && this.currentUserId != "") {
             this.setCurrentUser(this.currentUserId)
         }
 
@@ -161,39 +198,98 @@ export class UsersManager extends HTMLElement {
             return
         }
 
-        let stream = globule.resourceService.getAccounts(rqst, { })
+        let stream = globule.resourceService.getAccounts(rqst, {})
+
+        let accounts = []
 
         stream.on('data', (rsp) => {
-            console.log(rsp.getAccountsList())
+            accounts = accounts.concat(rsp.getAccountsList())
         })
 
         stream.on("status", (status) => {
             if (status.code == 0) {
-
+                this.displayUsers(accounts)
             } else {
                 displayError(status.details)
             }
         })
     }
 
+    // Display the users.
+    displayUsers(accounts) {
+
+        // I will set the users in the table.
+        let table = this.shadowRoot.querySelector("globular-table")
+
+        let data = []
+
+        accounts.forEach(account => {
+            let d = {}
+            d.id = account.getName() // the id will never change...       
+            d.firstName = " "
+            if (account.getFirstname()) {
+                d.firstName = account.getFirstname()
+            }
+            d.lastName = " "
+            if (account.getLastname()) {
+                d.lastName = account.getLastname()
+            }
+            d.userEmail = account.getEmail()
+
+            if (account.getProfilepicture() != "") {
+                d.profilePicture = account.getProfilepicture()
+            } else {
+                d.profilePicture = "https://www.w3schools.com/howto/img_avatar.png"
+            }
+
+            data.push(d)
+
+        })
+
+        // Here I sort the data.
+        data.sort((a, b) => {
+            if (a.firstName < b.firstName) {
+                return -1
+            } else if (a.firstName > b.firstName) {
+                return 1
+            }
+
+            return 0
+        })
+
+        table.setData(data)
+
+        // i will add the listener to row-click event.
+        table.addEventListener("row-click", (e) => {
+            let user = e.detail
+            this.currentUserId = user.id
+            // Dispatch a custom event when the property changes
+            this.dispatchEvent(new CustomEvent('currentUserIdChanged', { detail: this.currentUserId }));
+            this.setCurrentUser(user.id)
+        })
+
+    }
+
 
     // Set the current user.
     setCurrentUser(userId) {
-        if( AppComponent.globules[0] == null) {
+        if (AppComponent.globules[0] == null) {
             return
         }
- 
+
         if (userId === "new-user") {
+            let a = new Account()
+            a.setProfilepicture("https://www.w3schools.com/howto/img_avatar.png")
+
             let userEditor = this.querySelector("globular-user-editor")
             if (userEditor != null) {
                 // just focus on the user editor.
+                userEditor.setAccount(a)
                 userEditor.setFocus()
                 return
             }
 
             // Create a new user.
-            let a = new Account()
-            a.setProfilepicture("https://www.w3schools.com/howto/img_avatar.png")
             userEditor = new UserEditor(a)
             userEditor.slot = "user"
             userEditor.id = "user-editor"
@@ -201,7 +297,7 @@ export class UsersManager extends HTMLElement {
             this.appendChild(userEditor)
             userEditor.setFocus()
 
-        } else {
+        } else if (userId != null && userId != "") {
             this.currentUserId = userId
             // Get the user.
             let rqst = new GetAccountRqst()
@@ -221,7 +317,7 @@ export class UsersManager extends HTMLElement {
                     userEditor.setFocus()
                 }
 
-               
+
 
             }).catch((error) => {
                 displayError(error)
@@ -264,6 +360,7 @@ export class UserEditor extends HTMLElement {
                 margin: 1rem;
 
                 flex-direction: column;
+                z-index: 100;
             }
 
             #title {
@@ -371,7 +468,7 @@ export class UserEditor extends HTMLElement {
             <div class="user-form">
                 <div id="avatar-div">
                     <img id="avatar" src="https://www.w3schools.com/howto/img_avatar.png" alt="Avatar">
-                    <avatar-changer id="avatar-changer" style="position: absolute; top: 60px; left: 0px; display: none;"></avatar-changer>
+                    <avatar-changer id="avatar-changer" style="position: absolute; top: 60px; left: 0px; display: none; z-index: 100;"></avatar-changer>
                 </div>
                 <div class="table">
                     <div class="row">
@@ -411,7 +508,9 @@ export class UserEditor extends HTMLElement {
                 </div>
             </div>
 
-            <div id="actions" style="display: flex; flex-direction: row; justify-content: flex-end; margin-top: 1rem;">
+            <div id="actions" style="display: flex; flex-direction: row; margin-top: 1rem;">
+                <paper-button id="delete-btn" role="button" tabindex="0" aria-disabled="false" style="display:none;">Delete</paper-button>
+                <span style="flex-grow: 1;"></span>
                 <paper-button id="save-btn" role="button" tabindex="0" aria-disabled="false">Save</paper-button>
                 <paper-button id="cancel-btn" role="button" tabindex="0" aria-disabled="false">Cancel</paper-button>
             </div>
@@ -570,6 +669,31 @@ export class UserEditor extends HTMLElement {
 
         })
 
+        // Action on the cancel button.
+        this.shadowRoot.querySelector("#cancel-btn").addEventListener("click", () => {
+            this.parentNode.dispatchEvent(new CustomEvent('currentUserIdChanged', { detail: null }));
+            this.remove()
+        })
+
+        // Action on the delete button.
+        this.shadowRoot.querySelector("#delete-btn").addEventListener("click", () => {
+            // Here I will ask the the user if he is sure to delete the account.
+            let question = displayQuestion(`Are you sure to delete the account ${this.account.getName()} ?`,
+                `<div style="display: flex; justify-content: center; margin-top: 1.5rem;">
+                    <paper-button id="yes-btn" role="button" tabindex="0" aria-disabled="false">Yes</paper-button>
+                    <paper-button id="no-btn" role="button" tabindex="0" aria-disabled="false">No</paper-button>
+            </div>`)
+
+
+            question.toastElement.querySelector("#yes-btn").addEventListener("click", () => {
+                question.toastElement.remove()
+                this.deleteAccount(this.account)
+            })
+
+            question.toastElement.querySelector("#no-btn").addEventListener("click", () => {
+                question.toastElement.remove()
+            })
+        })
 
         // Set the account.
         if (account) {
@@ -577,6 +701,47 @@ export class UserEditor extends HTMLElement {
         }
     }
 
+    // Delete the account.
+    deleteAccount(account) {
+        if (AppComponent.globules.length === 0) {
+            displayError("No globule is connected.")
+            return
+        }
+
+        let globule = AppComponent.globules[0]
+        if (globule == null) {
+            displayError("No globule is connected.")
+            return
+        }
+
+        // Here I will test if a token is prensent on the globule
+        if (globule.token == null) {
+            displayAuthentication(`Please authenticate on ${globule.config.Name}`, globule, () => {
+                this.deleteAccount(account)
+            }, err => {
+                displayError(err)
+            })
+
+            return
+        }
+
+        // Here I will delete the account.
+        let rqst = new DeleteAccountRqst
+        rqst.setId(this.account.getId())
+
+        AppComponent.globules[0].resourceService.deleteAccount(rqst, { token: globule.token }).then((response) => {
+            displaySuccess(`Account ${this.account.getName()} was deleted.`)
+            this.parentNode.currentUserId = null // set the current user id to null.
+            this.parentNode.dispatchEvent(new CustomEvent('currentUserIdChanged', { detail: null }));
+            this.parentNode.dispatchEvent(new CustomEvent('reloadUsers', { detail: null }));
+            this.remove()
+        }).catch((error) => {
+            displayError(error)
+        });
+
+    }
+
+    // Save the account.
     saveAccount(account) {
         if (AppComponent.globules.length === 0) {
             displayError("No globule is connected.")
@@ -622,6 +787,10 @@ export class UserEditor extends HTMLElement {
 
             AppComponent.globules[0].resourceService.registerAccount(rqst, { token: globule.token }).then((response) => {
                 displaySuccess(`Account ${account.getName()} was created.`)
+
+                // I will dispatch an event to refresh the users.
+                this.parentNode.dispatchEvent(new CustomEvent('reloadUsers', { detail: null }));
+
             }).catch((error) => {
                 displayError(error)
             });
@@ -633,6 +802,7 @@ export class UserEditor extends HTMLElement {
 
             AppComponent.globules[0].resourceService.setAccount(rqst, { token: globule.token }).then((response) => {
                 displaySuccess(`Account ${account.getName()} was updated.`)
+                this.parentNode.dispatchEvent(new CustomEvent('reloadUsers', { detail: null }));
             }).catch((error) => {
                 displayError(error)
             });
@@ -643,14 +813,37 @@ export class UserEditor extends HTMLElement {
         this.account = account
 
         // Set the values in the form.
-        this.shadowRoot.querySelector("#name").value = account.getName()
-        this.shadowRoot.querySelector("#email").value = account.getEmail()
-        this.shadowRoot.querySelector("#first-name").value = account.getFirstname()
-        this.shadowRoot.querySelector("#last-name").value = account.getLastname()
-        this.shadowRoot.querySelector("#middle").value = account.getMiddle()
-        this.shadowRoot.querySelector("#password").value = ""
-        this.shadowRoot.querySelector("#confirm-password").value = ""
-        this.shadowRoot.querySelector("#avatar").src = account.getProfilepicture()
+        if (account.getId() != "") {
+            this.shadowRoot.querySelector("#name").value = account.getName()
+            this.shadowRoot.querySelector("#email").value = account.getEmail()
+            this.shadowRoot.querySelector("#first-name").value = account.getFirstname()
+            this.shadowRoot.querySelector("#last-name").value = account.getLastname()
+            this.shadowRoot.querySelector("#middle").value = account.getMiddle()
+            this.shadowRoot.querySelector("#password").value = "**********"
+            this.shadowRoot.querySelector("#password").setAttribute("disabled", "true")
+            this.shadowRoot.querySelector("#confirm-password").parentNode.style.display = "none"
+            this.shadowRoot.querySelector("#confirm-password").value = "**********"
+            this.shadowRoot.querySelector("#password").setAttribute("disabled", "true")
+            this.shadowRoot.querySelector("#avatar").src = account.getProfilepicture()
+            if (account.getId() != "sa") {
+                this.shadowRoot.querySelector("#delete-btn").style.display = "block"
+            }else{
+                this.shadowRoot.querySelector("#delete-btn").style.display = "none"
+            }
+        } else {
+            this.shadowRoot.querySelector("#name").value = ""
+            this.shadowRoot.querySelector("#email").value = ""
+            this.shadowRoot.querySelector("#first-name").value = ""
+            this.shadowRoot.querySelector("#last-name").value = ""
+            this.shadowRoot.querySelector("#middle").value = ""
+            this.shadowRoot.querySelector("#password").value = ""
+            this.shadowRoot.querySelector("#password").removeAttribute("disabled")
+            this.shadowRoot.querySelector("#confirm-password").parentNode.style.display = "flex"
+            this.shadowRoot.querySelector("#confirm-password").value = ""
+            this.shadowRoot.querySelector("#password").removeAttribute("disabled")
+            this.shadowRoot.querySelector("#avatar").src = "https://www.w3schools.com/howto/img_avatar.png"
+            this.shadowRoot.querySelector("#delete-btn").style.display = "none"
+        }
 
     }
 
@@ -660,4 +853,3 @@ export class UserEditor extends HTMLElement {
 }
 
 customElements.define('globular-user-editor', UserEditor)
-

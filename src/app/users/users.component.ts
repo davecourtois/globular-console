@@ -34,7 +34,7 @@ export class UsersComponent implements OnInit {
         // Handle the event and update your Angular component or service
         const newUserId = event.detail;
         this.userService.currentUserId = newUserId;
-
+        
         // Update the URL with the new user ID
         this.updateUrlWithUserId(newUserId);
       });
@@ -43,6 +43,7 @@ export class UsersComponent implements OnInit {
 
   updateUrlWithUserId(userId: string) {
     // Navigate with the new query parameter
+    
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { 'current-user-id': userId },

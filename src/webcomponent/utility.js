@@ -471,3 +471,55 @@ export function displaySuccess(msg) {
     successNotification.showToast();
 }
 
+
+/**
+ * Display a success message to the user
+ * @param {*} msg 
+ */
+export function displayQuestion(question, body) {
+
+    // Create a custom DOM element for the notification content
+    // Create a container element with an error icon and text
+    const msgContainer = document.createElement('div');
+    msgContainer.innerHTML = `
+    <style>
+    paper-button {
+        font-size: .95rem; /* Smaller font size */
+        padding: 4px 8px; /* Smaller padding */
+        --paper-button: {
+            /* If you need to adjust internal styles of the paper-button */
+        };
+    }
+</style>
+<div style="display: flex; flex-direction:column;">
+    <div style="display: flex; align-items: center;">
+        <i class="fa fa-question-circle" style="color: var(--info-color); margin-right: .5rem;"></i>
+        <span>${question}</span>
+    </div>
+    <div>
+        ${body}
+    </div>
+</div>
+`;
+
+    // Example notification with an error icon using the node option
+    const notification = Toastify({
+        node: msgContainer, // Use the custom DOM element
+        text: 'this is a question...',
+        duration: 0,
+        close: true,
+        gravity: 'top',
+        style: {
+            background: 'var(--surface-color)',
+            borderRadius: '.25rem',
+            fontFamily: 'Roboto',
+            fontSize: '1.1rem',
+            color: 'var(--on-surface-color)',
+        },
+    });
+
+    // Show the notification
+    notification.showToast();
+
+    return notification;
+}

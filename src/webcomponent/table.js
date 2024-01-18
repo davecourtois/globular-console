@@ -554,6 +554,8 @@ export class Table extends HTMLElement {
                 flex-direction: row;
                 align-items: center;
                 padding: 8px;
+                border-top-left-radius: 5px;
+                border-top-right-radius: 5px;
             }
 
             #container {
@@ -591,6 +593,7 @@ export class Table extends HTMLElement {
                 <globular-table-filter></globular-table-filter>
             </iron-collapse>
             <div id="table-container">
+                
                 <table>
                     <thead>
                         <tr id="table-header"> </tr>
@@ -756,7 +759,12 @@ export class Table extends HTMLElement {
 
         this.loadDataInRange(this.currentIndex, this.currentIndex + this.visibleDataCount)
         this.fakeScroolDiv.style.height = `${(this.getTotalDataCount() + 1) * this.rowHeight}px`
-        this.tableContainer.style.height = `${(this.visibleDataCount + 1) * this.rowHeight}px`;
+
+        // I will get the number of actual rows.
+        let rows = this.tableBody.querySelectorAll("tr")
+        if (rows.length >= this.visibleDataCount) {
+            this.tableContainer.style.height = `${(this.visibleDataCount + 1) * this.rowHeight}px`;
+        }
 
     }
 
@@ -766,6 +774,7 @@ export class Table extends HTMLElement {
 
     loadRow(index) {
         let newRow = document.createElement('tr')
+        newRow.setAttribute("index", index)
         let data = this.getData()[index]
         if (!data) {
             console.log("fail to read data at index " + index)
@@ -809,6 +818,11 @@ export class Table extends HTMLElement {
                 }
             }
             newRow.appendChild(cell)
+            
+            cell.addEventListener('click', (event) => {
+                let data = this.getData()[index]
+                this.dispatchEvent(new CustomEvent('row-click', { detail: data }));
+            })
         }
         this.tableBody.appendChild(newRow);
     }
