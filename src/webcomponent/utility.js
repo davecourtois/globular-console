@@ -1,3 +1,4 @@
+import { set } from '@polymer/polymer/lib/utils/path';
 import { AuthenticateRqst } from 'globular-web-client/authentication/authentication_pb';
 import Toastify from 'toastify-js';
 
@@ -345,6 +346,10 @@ export function displayAuthentication(msg, globule, successCallback, errorCallba
     // Focus on the password input
     autenticationMsg = document.getElementById('authentication-message');
     let passwordInput = autenticationMsg.querySelector('#sa-password-input');
+
+    setTimeout(() => {
+        passwordInput.focus();
+    }, 100);
 
     // Add event listener to the password input
     passwordInput.addEventListener('keyup', (e) => {

@@ -1,4 +1,4 @@
-import { GetAccountRqst, GetGroupsRqst, Group, RemoveGroupMemberAccountRqst } from "globular-web-client/resource/resource_pb";
+import { AddGroupMemberAccountRqst, CreateGroupRqst, DeleteGroupRqst, GetAccountRqst, GetAccountsRqst, GetGroupsRqst, Group, RemoveGroupMemberAccountRqst, UpdateGroupRqst } from "globular-web-client/resource/resource_pb";
 import { AppComponent } from "../app/app.component";
 import { displayAuthentication, displayError, displayQuestion } from "./utility";
 
@@ -106,6 +106,11 @@ export class GroupsManager extends HTMLElement {
                 margin-right: 1rem;
             }
 
+            #groups > globular-group-view {
+                margin-right: 1rem;
+                margin-bottom: 1rem;
+            }
+
         </style>
 
         <div id="content">
@@ -148,6 +153,23 @@ export class GroupsManager extends HTMLElement {
                 clearInterval(interval)
             }
         }, 1000)
+
+        // add refresh event listener.
+        document.addEventListener('refresh-groups', () => {
+            this.init()
+        })
+
+        // add current group id changed event listener.
+        document.addEventListener('currentGroupIdChanged', (evt) => {
+            this.currentGroupId = evt.detail
+            if(this.currentGroupId == null){
+                // remove the group editor.
+                let editor = this.querySelector('globular-group-editor')
+                if (editor != null) {
+                    this.removeChild(editor)
+                }
+            }
+        })
     }
 
 
@@ -326,8 +348,9 @@ export class GroupEditor extends HTMLElement {
                 border: 1px solid var(--divider-color);
                 border-radius: 3px;
                 min-width: 400px;
-                min-height: 176px;
+                height: 192px;
                 margin-top: 1rem;
+                overflow-y: auto;
             }
 
             input {
@@ -392,6 +415,10 @@ export class GroupEditor extends HTMLElement {
                 }
             }
 
+            #potential-members > globular-user-view:hover {
+                cursor: pointer;
+            }
+
         </style>
 
         <div id="content">
@@ -417,6 +444,9 @@ export class GroupEditor extends HTMLElement {
                         <div class="members">
                             <slot name="members"></slot>
                         </div>
+                        <div id="potential-members" class="members" style="margin-left: 1rem; display: none;">
+                            <span style="margin-left: 1rem; margin-right: 1rem;">Potential Members</span>
+                        </div>
                     </div>
                     <div class="row">
                         <label>
@@ -426,11 +456,12 @@ export class GroupEditor extends HTMLElement {
                         <div class="organizations">
                             <slot name="organizations"></slot>
                         </div>
+
                     </div>
                 </div>
             </div>
             <div id="actions" style="display: flex; flex-direction: row; margin-top: 1rem;">
-                <paper-button id="delete-btn" role="button" tabindex="0" aria-disabled="false" style="display:none;">Delete</paper-button>
+                <paper-button id="delete-btn" role="button" tabindex="0" aria-disabled="false">Delete</paper-button>
                 <span style="flex-grow: 1;"></span>
                 <paper-button id="save-btn" role="button" tabindex="0" aria-disabled="false">Save</paper-button>
                 <paper-button id="cancel-btn" role="button" tabindex="0" aria-disabled="false">Cancel</paper-button>
@@ -446,17 +477,92 @@ export class GroupEditor extends HTMLElement {
 
         // Add the event listeners.
         this.saveBtn.addEventListener('click', () => {
-            this.save()
+            let globule = AppComponent.globules[0]
+            if (globule == null) {
+                displayError("No globule is connected.")
+                return
+            }
+
+            if (globule.token == null) {
+                displayAuthentication(`You need to be authenticated to save a group.`, globule,
+                    () => {
+                        this.save()
+                    }, err => displayError(err));
+            } else {
+                this.save()
+            }
+        })
+
+        this.deleteBtn.addEventListener('click', () => {
+            // I will ask the user to confirm the deletion.
+            let question = displayQuestion(`Are you sure you want to delete the ${this.group.getName()}?`,
+                `<div style="display: flex; justify-content: center; margin-top: 1.5rem;">
+                    <paper-button id="yes-btn" role="button" tabindex="0" aria-disabled="false">Yes</paper-button>
+                    <paper-button id="no-btn" role="button" tabindex="0" aria-disabled="false">No</paper-button>
+                </div>`)
+
+            let yesBtn = question.toastElement.querySelector('#yes-btn')
+            let noBtn = question.toastElement.querySelector('#no-btn')
+
+            yesBtn.addEventListener("click", () => {
+                question.toastElement.remove()
+                this.deleteGroup()
+            })
+
+            noBtn.addEventListener("click", () => {
+                question.toastElement.remove()
+            })
         })
 
         this.cancelBtn.addEventListener('click', () => {
             this.cancel()
+        })
+
+        // Add members button.
+        this.addMemberBtn = this.shadowRoot.getElementById('add-member-btn')
+        this.addMemberBtn.addEventListener('click', () => {
+            this.displayPotentialMembers()
         })
     }
 
     // The connection callback.
     connectedCallback() {
 
+    }
+
+    deleteGroup() {
+        let globule = AppComponent.globules[0]
+        if (globule == null) {
+            displayError("No globule is connected.")
+            return
+        }
+
+        if (globule.token == null) {
+            displayAuthentication(`You need to be authenticated to delete a group.`, globule,
+                () => {
+                    this.deleteGroup()
+                    return;
+                }, err => displayError(err));
+        }else {
+            let rqst = new DeleteGroupRqst
+            rqst.setGroup(this.group.getId())
+
+            // delete the group.
+            globule.resourceService.deleteGroup(rqst, { token: globule.token })
+                .then((rsp) => {
+                    document.dispatchEvent(new CustomEvent('currentGroupIdChanged', { detail:  null}))
+
+                    // I will dispatch event refresh groups.
+                    document.dispatchEvent(new CustomEvent('refresh-groups', { detail: null }))
+                    
+
+                    // remove the component.
+                    this.remove()
+
+                }).catch((err) => {
+                    displayError(err)
+                })
+        }
     }
 
     // Save the group.
@@ -466,6 +572,46 @@ export class GroupEditor extends HTMLElement {
         if (globule == null) {
             displayError("No globule is connected.")
             return
+        }
+
+        if (this.group.getId() == "") {
+            let rqst = new CreateGroupRqst
+
+            let name = this.shadowRoot.getElementById('name')
+            this.group.setName(name.value)
+            this.group.setId(name.value) // I will use the name as the id.
+
+            let description = this.shadowRoot.getElementById('description')
+            this.group.setDescription(description.value)
+            rqst.setGroup(this.group)
+
+            // create the group.
+            globule.resourceService.createGroup(rqst, { token: globule.token })
+                .then((rsp) => {
+                    this.setGroup(this.group)
+                    document.dispatchEvent(new CustomEvent('currentGroupIdChanged', { detail: this.group.getId() }))
+                    document.dispatchEvent(new CustomEvent('refresh-groups', { detail: null }))
+                }).catch((err) => {
+                    displayError(err)
+                })
+
+        } else {
+
+            // use the update group request.
+            let rqst = new UpdateGroupRqst
+            rqst.setGroupid(this.group.getId())
+            let str = `{"$set":{"name": "${this.group.getName()}", "description": "${this.group.getDescription()}"}}`
+            rqst.setValues(str)
+
+            // update the group.
+            globule.resourceService.updateGroup(rqst, { token: globule.token })
+                .then((rsp) => {
+                    // I will dispatch event refresh group.
+                    let evt = new CustomEvent(`refresh_${this.group.getId()}`, { detail: this.group.getId() })
+                    document.dispatchEvent(evt)
+                }).catch((err) => {
+                    displayError(err)
+                })
         }
 
 
@@ -485,6 +631,13 @@ export class GroupEditor extends HTMLElement {
 
     // set the group.
     setGroup(group) {
+
+        // I will get user view from the slot.
+        let members = this.querySelectorAll('globular-user-view[slot="members"]')
+        members.forEach((member) => {
+            this.removeChild(member)
+        })
+
         this.group = group
 
         // set the name.
@@ -538,8 +691,9 @@ export class GroupEditor extends HTMLElement {
                             }, err => displayError(err));
                         } else {
                             this.removeMember(member, () => {
-                                this.removeMembers(member, group)
-                                this.removeChild(userView)
+                                this.removeMember(member, () => {
+                                    this.removeChild(userView)
+                                })
                             })
                         }
                     })
@@ -547,13 +701,104 @@ export class GroupEditor extends HTMLElement {
                     noBtn.addEventListener("click", () => {
                         question.toastElement.remove()
                     })
-
-
-
-
                 }
             })
         })
+    }
+
+    /**
+     * That function display the list of potential group members.
+     * @param {*} members 
+     */
+    displayPotentialMembers(members) {
+        // first of all i need to get the list of all accounts.
+        let rqst = new GetAccountsRqst
+        rqst.setQuery("{}")
+
+        let globule = AppComponent.globules[0]
+        if (globule == null) {
+            displayError("No globule is connected.")
+            return
+        }
+
+        let stream = globule.resourceService.getAccounts(rqst, {})
+        let accounts = []
+
+        stream.on('data', (rsp) => {
+            accounts = accounts.concat(rsp.getAccountsList())
+        })
+
+        stream.on("status", (status) => {
+            if (status.code == 0) {
+
+                let potentialMembers = this.shadowRoot.getElementById('potential-members')
+                potentialMembers.innerHTML = ""
+                potentialMembers.style.display = "flex"
+
+                // display the potential members.
+                accounts.forEach((account) => {
+                    if (this.group.getMembersList().indexOf(account.getId()) == -1) {
+                        let userView = new UserView(account)
+                        userView.slot = 'members'
+                        userView.id = account.getId() + "_potential"
+                        userView.setAttribute('closeable', 'false')
+                        potentialMembers.appendChild(userView)
+
+                        // add the event listener.
+                        userView.addEventListener('click', () => {
+                            // I will be sure the a token is available.
+                            let globule = AppComponent.globules[0]
+                            if (globule == null) {
+                                displayError("No globule is connected.")
+                                return
+                            }
+
+                            if (globule.token == null) {
+                                displayAuthentication(`You need to be authenticated to add a member to a group.`, globule, () => {
+                                    this.addMember(account.getId(), () => {
+                                        potentialMembers.removeChild(userView)
+                                    })
+
+                                }, err => displayError(err));
+                            } else {
+                                this.addMember(account.getId(), () => {
+                                    potentialMembers.removeChild(userView)
+                                })
+                            }
+                        })
+                    }
+                })
+
+
+            } else {
+                displayError(status.details)
+            }
+        })
+    }
+
+    addMember(member, callback) {
+
+        let globule = AppComponent.globules[0]
+
+        let rqst = new AddGroupMemberAccountRqst
+        rqst.setGroupid(this.group.getId())
+        rqst.setAccountid(member)
+
+        // add the member.
+        globule.resourceService.addGroupMemberAccount(rqst, { token: globule.token })
+            .then((rsp) => {
+                let evt = new CustomEvent(`refresh_${this.group.getId()}`, { detail: member })
+                document.dispatchEvent(evt)
+                this.group.setMembersList(this.group.getMembersList().filter((m) => m != member))
+
+                // push the member to the group.
+                this.group.getMembersList().push(member)
+
+                this.setGroup(this.group)
+                callback()
+            }).catch((err) => {
+                displayError(err)
+            })
 
     }
 
@@ -564,17 +809,63 @@ export class GroupEditor extends HTMLElement {
      */
     removeMember(member, callback) {
 
-
-        question.toastElement.remove()
         let globule = AppComponent.globules[0]
         let rqst = new RemoveGroupMemberAccountRqst
-        rqst.setGroupid(group.getId())
+        rqst.setGroupid(this.group.getId())
         rqst.setAccountid(member)
 
         // remove the member.
-        globule.resourceService.removeGroupMemberAccount(rqst, {})
+        globule.resourceService.removeGroupMemberAccount(rqst, { token: globule.token })
             .then((rsp) => {
+
+                let evt = new CustomEvent(`refresh_${this.group.getId()}`, { detail: member })
+                document.dispatchEvent(evt)
+                this.group.setMembersList(this.group.getMembersList().filter((m) => m != member))
+
+                // if the potential members is displayed, I will append the member to the potential members.
+                let potentialMembers = this.shadowRoot.getElementById('potential-members')
+                if (potentialMembers.style.display == "flex") {
+                    getUserById(member, (user) => {
+
+                        if (potentialMembers.querySelector(`globular-user-view[id="${member}_potential"]`) != null) {
+                            return
+                        }
+
+                        let userView = new UserView(user)
+                        userView.slot = 'members'
+                        userView.id = member + "_potential"
+                        userView.setAttribute('closeable', 'false')
+
+
+                        potentialMembers.appendChild(userView)
+
+                        // add the event listener.
+                        userView.addEventListener('click', () => {
+                            // I will be sure the a token is available.
+                            let globule = AppComponent.globules[0]
+                            if (globule == null) {
+                                displayError("No globule is connected.")
+                                return
+                            }
+
+                            if (globule.token == null) {
+                                displayAuthentication(`You need to be authenticated to add a member to a group.`, globule, () => {
+                                    this.addMember(member, () => {
+                                        potentialMembers.removeChild(userView)
+                                    })
+
+                                }, err => displayError(err));
+                            } else {
+                                this.addMember(member, () => {
+                                    potentialMembers.removeChild(userView)
+                                })
+                            }
+                        })
+                    })
+                }
+
                 callback()
+
             }).catch((err) => {
                 displayError(err)
             })
@@ -594,6 +885,8 @@ export class GroupView extends HTMLElement {
     // Create the applicaiton view.
     constructor(group) {
         super()
+
+        this.group = group
 
         // Set the shadow dom.
         this.attachShadow({ mode: 'open' });
@@ -646,7 +939,7 @@ export class GroupView extends HTMLElement {
             <span id="title">${group.getName()}</span>
             <span id="sub-title"> ${group.getDescription()}</span>
             <div style="display: flex; flex-direction: column; padding: .5rem;">
-                <span>Members (${group.getMembersList().length})</span>
+                <span id="members-count">Members (${group.getMembersList().length})</span>
                 <div class="members">
                     <slot name="members"></slot>
                 </div>
@@ -663,17 +956,49 @@ export class GroupView extends HTMLElement {
             document.dispatchEvent(new CustomEvent('currentGroupIdChanged', { detail: group.getId() }))
         })
 
+        // Now I will subscribe to the memberAdded event.
+        document.addEventListener(`refresh_${group.getId()}`, (evt) => {
+
+            getGroupById(group.getId(), (groups) => {
+                if (groups.length == 0) {
+                    displayError("Group not found.")
+                    return
+                }
+                this.group = groups[0]
+                let membersCount = this.shadowRoot.getElementById('members-count')
+                membersCount.innerHTML = `Members (${this.group.getMembersList().length})`
+                this.refresh()
+            })
+
+        })
+
+
+        this.refresh()
+    }
+
+    refresh() {
+
+        this.innerHTML = ""
+
+        // set the name.
+        let name = this.shadowRoot.getElementById('title')
+        name.innerHTML = this.group.getName()
+
+        // set the description.
+        let description = this.shadowRoot.getElementById('sub-title')
+        description.innerHTML = this.group.getDescription()
+
         // add the members...
-        let members = group.getMembersList()
+        let members = this.group.getMembersList()
         members.forEach((member) => {
             getUserById(member, (user) => {
                 let userView = new UserView(user)
+                userView.id = member + "_view"
                 userView.slot = 'members'
                 this.appendChild(userView)
             })
         })
     }
-
 
     // The connection callback.
     connectedCallback() {
@@ -753,7 +1078,6 @@ export class UserView extends HTMLElement {
 
         </style>
         <div id="content">
-           
             <img src="${account.getProfilepicture()}"></img>
             <div style="display: flex; flex-direction: row; align-items: center;">
                 <paper-icon-button id="close-btn" icon="icons:close" style="display: none;" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
