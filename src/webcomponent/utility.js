@@ -288,7 +288,7 @@ function authenticateSa(globule, password, callback, errorCallback) {
  * This function display authentication error and prompt the user to login. 
  * @param {*} err 
  */
-export function displayAuthentication(err, globule, successCallback, errorCallback) {
+export function displayAuthentication(msg, globule, successCallback, errorCallback) {
 
     // Create a custom DOM element for the notification content
     // Create a container element with an error icon and text
@@ -297,7 +297,7 @@ export function displayAuthentication(err, globule, successCallback, errorCallba
 <div id="authentication-message" style="display: flex; flex-direction: column;">
     <div style="display: flex; align-items: center;">
         <i class="fa fa-exclamation-triangle" style="color: var(--error-color); margin-right: 5px;"></i>
-        <span>${err}</span>
+        <span>${msg}</span>
     </div>
     <div id="admin-login">
         <paper-input
@@ -490,16 +490,16 @@ export function displayQuestion(question, body) {
             /* If you need to adjust internal styles of the paper-button */
         };
     }
-</style>
-<div style="display: flex; flex-direction:column;">
-    <div style="display: flex; align-items: center;">
-        <i class="fa fa-question-circle" style="color: var(--info-color); margin-right: .5rem;"></i>
-        <span>${question}</span>
+    </style>
+    <div style="display: flex; flex-direction:column;">
+        <div style="display: flex; align-items: center;">
+            <i class="fa fa-question-circle" style="color: var(--info-color); margin-right: .5rem;"></i>
+            <span>${question}</span>
+        </div>
+        <div>
+            ${body}
+        </div>
     </div>
-    <div>
-        ${body}
-    </div>
-</div>
 `;
 
     // Example notification with an error icon using the node option

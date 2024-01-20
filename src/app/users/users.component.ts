@@ -30,7 +30,7 @@ export class UsersComponent implements OnInit {
 
     // Wait for the view to be initialized
     setTimeout(() => {
-      this.userManagerElement.nativeElement.addEventListener('currentUserIdChanged', (event: any) => {
+      document.addEventListener('currentUserIdChanged', (event: any) => {
         // Handle the event and update your Angular component or service
         const newUserId = event.detail;
         this.userService.currentUserId = newUserId;

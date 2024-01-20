@@ -57,7 +57,7 @@ export class UsersManager extends HTMLElement {
         this.attachShadow({ mode: 'open' });
 
         // Test if the current user id is set.
-        this.currentUserId = this.getAttribute("current-user-id")
+        this.currentUserId = null
 
         // Innitialisation of the layout.
         this.shadowRoot.innerHTML = `
@@ -149,14 +149,14 @@ export class UsersManager extends HTMLElement {
             }
 
             // Dispatch a custom event when the property changes
-            this.dispatchEvent(new CustomEvent('currentUserIdChanged', { detail: this.currentUserId }));
+            document.dispatchEvent(new CustomEvent('currentUserIdChanged', { detail: this.currentUserId }));
 
             this.appendChild(userEditor)
             userEditor.setFocus()
         })
 
         // add the reload users event listener.
-        this.addEventListener("reloadUsers", (e) => {
+        document.addEventListener("reloadUsers", (e) => {
             this.init()
         })
 
@@ -264,7 +264,7 @@ export class UsersManager extends HTMLElement {
             let user = e.detail
             this.currentUserId = user.id
             // Dispatch a custom event when the property changes
-            this.dispatchEvent(new CustomEvent('currentUserIdChanged', { detail: this.currentUserId }));
+            document.dispatchEvent(new CustomEvent('currentUserIdChanged', { detail: this.currentUserId }));
             this.setCurrentUser(user.id)
         })
 
@@ -395,6 +395,13 @@ export class UserEditor extends HTMLElement {
                 border: 1px solid var(--divider-color);
             }
 
+            input, textarea {
+                font-family: Arial, Helvetica, sans-serif; /* Primary font */
+                font-size: 16px; /* Readable size */
+                color: #333; /* Font color */
+                /* Add other styles like padding, borders as needed */
+            }
+
             input {
                 margin-top: 1rem;
                 margin-bottom: 1rem;
@@ -461,7 +468,7 @@ export class UserEditor extends HTMLElement {
         </style>
         <div id="content">
             <div style="display: flex; flex-direction: row; width: 100%; align-items: center;">
-                <span id="title">User Informations</span>
+                <span id="title">User Editor</span>
                 <paper-icon-button id="info-btn" icon="icons:info-outline" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
             </div>
 
@@ -671,7 +678,7 @@ export class UserEditor extends HTMLElement {
 
         // Action on the cancel button.
         this.shadowRoot.querySelector("#cancel-btn").addEventListener("click", () => {
-            this.parentNode.dispatchEvent(new CustomEvent('currentUserIdChanged', { detail: null }));
+            document.dispatchEvent(new CustomEvent('currentUserIdChanged', { detail: null }));
             this.remove()
         })
 
@@ -732,8 +739,8 @@ export class UserEditor extends HTMLElement {
         AppComponent.globules[0].resourceService.deleteAccount(rqst, { token: globule.token }).then((response) => {
             displaySuccess(`Account ${this.account.getName()} was deleted.`)
             this.parentNode.currentUserId = null // set the current user id to null.
-            this.parentNode.dispatchEvent(new CustomEvent('currentUserIdChanged', { detail: null }));
-            this.parentNode.dispatchEvent(new CustomEvent('reloadUsers', { detail: null }));
+            document.dispatchEvent(new CustomEvent('currentUserIdChanged', { detail: null }));
+            document.dispatchEvent(new CustomEvent('reloadUsers', { detail: null }));
             this.remove()
         }).catch((error) => {
             displayError(error)
@@ -789,7 +796,7 @@ export class UserEditor extends HTMLElement {
                 displaySuccess(`Account ${account.getName()} was created.`)
 
                 // I will dispatch an event to refresh the users.
-                this.parentNode.dispatchEvent(new CustomEvent('reloadUsers', { detail: null }));
+                document.dispatchEvent(new CustomEvent('reloadUsers', { detail: null }));
 
             }).catch((error) => {
                 displayError(error)
@@ -802,7 +809,7 @@ export class UserEditor extends HTMLElement {
 
             AppComponent.globules[0].resourceService.setAccount(rqst, { token: globule.token }).then((response) => {
                 displaySuccess(`Account ${account.getName()} was updated.`)
-                this.parentNode.dispatchEvent(new CustomEvent('reloadUsers', { detail: null }));
+                document.dispatchEvent(new CustomEvent('reloadUsers', { detail: null }));
             }).catch((error) => {
                 displayError(error)
             });
