@@ -1,7 +1,25 @@
 import { set } from "@polymer/polymer/lib/utils/path";
 import { AppComponent } from "../app/app.component";
 
-class AvatarChanger extends HTMLElement {
+export function getBase64FromImageUrl(url) {
+  return fetch(url)
+      .then(response => {
+          if (!response.ok) {
+              throw new Error('Network response was not ok');
+          }
+          return response.blob();
+      })
+      .then(blob => {
+          return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+          });
+      });
+}
+
+export class AvatarChanger extends HTMLElement {
   constructor() {
     super();
     const shadow = this.attachShadow({ mode: 'open' });

@@ -1,6 +1,7 @@
 import { AddGroupMemberAccountRqst, CreateGroupRqst, DeleteGroupRqst, GetAccountRqst, GetAccountsRqst, GetGroupsRqst, Group, RemoveGroupMemberAccountRqst, UpdateGroupRqst } from "globular-web-client/resource/resource_pb";
 import { AppComponent } from "../app/app.component";
 import { displayAuthentication, displayError, displayQuestion } from "./utility";
+import { UserView } from "./users";
 
 function getUserById(id, callback) {
     let rqst = new GetAccountRqst
@@ -1009,87 +1010,3 @@ export class GroupView extends HTMLElement {
 customElements.define('globular-group-view', GroupView)
 
 
-/**
- * display the user.
- */
-export class UserView extends HTMLElement {
-
-    // attributes.
-    static get observedAttributes() {
-        return ['closeable'];
-    }
-
-    // The connection callback.
-    attributeChangedCallback(name, oldValue, newValue) {
-        if (name === 'closeable') {
-            if (newValue == "true") {
-                this.closeBtn.style.display = "block"
-                this.closeBtn.addEventListener('click', () => {
-                    if (this.onClose != null) {
-                        this.onClose()
-                    }
-                })
-            } else {
-                this.closeBtn.style.display = "none"
-            }
-        }
-    }
-
-    // Create the applicaiton view.
-    constructor(account) {
-        super()
-        // Set the shadow dom.
-        this.attachShadow({ mode: 'open' });
-
-
-        // Innitialisation of the layout.
-        this.shadowRoot.innerHTML = `
-        <style>
-           
-            /* Any custom styling for your code block */
-            @import url('./styles.css');
-
-            #content {
-                display: flex;
-                background-color: var(--surface-color);
-                padding: .5rem;
-                border-radius: 0.5rem;
-                flex-direction: column;
-                align-items: center;
-            }
-
-            #content > img {
-                width: 48px;
-                height: 48px;
-                border-radius: 50%;
-            }
-
-            #name {
-                font-size: 1rem;
-                flex-grow: 1;
-            }
-
-            #close-btn {
-                width: 30px;        /* Width of the button */
-                height: 30px;       /* Height of the button */
-                --iron-icon-width: 10px;  /* Width of the icon */
-                --iron-icon-height: 10px; /* Height of the icon */
-            }
-
-        </style>
-        <div id="content">
-            <img src="${account.getProfilepicture()}"></img>
-            <div style="display: flex; flex-direction: row; align-items: center;">
-                <paper-icon-button id="close-btn" icon="icons:close" style="display: none;" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
-                <span id="name">${account.getName()}</span>
-            </div>
-        </div>
-        `
-
-        // Get the buttons.
-        this.closeBtn = this.shadowRoot.getElementById('close-btn')
-
-    }
-}
-
-customElements.define('globular-user-view', UserView)

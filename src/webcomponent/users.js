@@ -1,5 +1,5 @@
 import { Account, DeleteAccountRqst, GetAccountRqst, GetAccountsRqst, RegisterAccountRqst, SetAccountRqst } from "globular-web-client/resource/resource_pb";
-import { AvatarChanger } from "./image";
+import { AvatarChanger, getBase64FromImageUrl } from "./image";
 import { displayAuthentication, displayError, displayQuestion, displaySuccess } from "./utility";
 import { AppComponent } from "../app/app.component";
 import { Table } from "./table";
@@ -14,23 +14,7 @@ function displayAccountId(a) {
 // keep the account id.
 window["displayAccountId"] = displayAccountId
 
-function getBase64FromImageUrl(url) {
-    return fetch(url)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.blob();
-        })
-        .then(blob => {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
-        });
-}
+
 
 /**
  * The user manager, this component is used to manage the users, it is used to create, update, delete and search users.
@@ -860,3 +844,90 @@ export class UserEditor extends HTMLElement {
 }
 
 customElements.define('globular-user-editor', UserEditor)
+
+
+/**
+ * display the user.
+ */
+export class UserView extends HTMLElement {
+
+    // attributes.
+    static get observedAttributes() {
+        return ['closeable'];
+    }
+
+    // The connection callback.
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (name === 'closeable') {
+            if (newValue == "true") {
+                this.closeBtn.style.display = "block"
+                this.closeBtn.addEventListener('click', () => {
+                    if (this.onClose != null) {
+                        this.onClose()
+                    }
+                })
+            } else {
+                this.closeBtn.style.display = "none"
+            }
+        }
+    }
+
+    // Create the applicaiton view.
+    constructor(account) {
+        super()
+        // Set the shadow dom.
+        this.attachShadow({ mode: 'open' });
+
+
+        // Innitialisation of the layout.
+        this.shadowRoot.innerHTML = `
+        <style>
+           
+            /* Any custom styling for your code block */
+            @import url('./styles.css');
+
+            #content {
+                display: flex;
+                background-color: var(--surface-color);
+                padding: .5rem;
+                border-radius: 0.5rem;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            #content > img {
+                width: 48px;
+                height: 48px;
+                border-radius: 50%;
+            }
+
+            #name {
+                font-size: 1rem;
+                flex-grow: 1;
+            }
+
+            #close-btn {
+                width: 30px;        /* Width of the button */
+                height: 30px;       /* Height of the button */
+                --iron-icon-width: 10px;  /* Width of the icon */
+                --iron-icon-height: 10px; /* Height of the icon */
+            }
+
+        </style>
+        <div id="content">
+            <img src="${account.getProfilepicture()}"></img>
+            <div style="display: flex; flex-direction: row; align-items: center;">
+                <paper-icon-button id="close-btn" icon="icons:close" style="display: none;" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
+                <span id="name">${account.getName()}</span>
+            </div>
+        </div>
+        `
+
+        // Get the buttons.
+        this.closeBtn = this.shadowRoot.getElementById('close-btn')
+
+    }
+}
+
+customElements.define('globular-user-view', UserView)
+
