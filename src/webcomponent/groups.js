@@ -1,28 +1,11 @@
 import { AddGroupMemberAccountRqst, CreateGroupRqst, DeleteGroupRqst, GetAccountRqst, GetAccountsRqst, GetGroupsRqst, Group, RemoveGroupMemberAccountRqst, UpdateGroupRqst } from "globular-web-client/resource/resource_pb";
 import { AppComponent } from "../app/app.component";
 import { displayAuthentication, displayError, displayQuestion } from "./utility";
-import { UserView } from "./users";
+import { UserView, getUserById } from "./users";
 
-function getUserById(id, callback) {
-    let rqst = new GetAccountRqst
-    rqst.setAccountid(id)
 
-    let globule = AppComponent.globules[0]
-    if (globule == null) {
-        displayError("No globule is connected.")
-        return
-    }
 
-    // get the user.
-    globule.resourceService.getAccount(rqst, {})
-        .then((rsp) => {
-            callback(rsp.getAccount())
-        }).catch((err) => {
-            displayError(err)
-        })
-}
-
-function getGroupById(id, callback) {
+export function getGroupById(id, callback) {
     let rqst = new GetGroupsRqst
     rqst.setQuery(`{"id": "${id}"}`)
 
@@ -163,7 +146,7 @@ export class GroupsManager extends HTMLElement {
         // add current group id changed event listener.
         document.addEventListener('currentGroupIdChanged', (evt) => {
             this.currentGroupId = evt.detail
-            if(this.currentGroupId == null){
+            if (this.currentGroupId == null) {
                 // remove the group editor.
                 let editor = this.querySelector('globular-group-editor')
                 if (editor != null) {
@@ -544,18 +527,18 @@ export class GroupEditor extends HTMLElement {
                     this.deleteGroup()
                     return;
                 }, err => displayError(err));
-        }else {
+        } else {
             let rqst = new DeleteGroupRqst
             rqst.setGroup(this.group.getId())
 
             // delete the group.
             globule.resourceService.deleteGroup(rqst, { token: globule.token })
                 .then((rsp) => {
-                    document.dispatchEvent(new CustomEvent('currentGroupIdChanged', { detail:  null}))
+                    document.dispatchEvent(new CustomEvent('currentGroupIdChanged', { detail: null }))
 
                     // I will dispatch event refresh groups.
                     document.dispatchEvent(new CustomEvent('refresh-groups', { detail: null }))
-                    
+
 
                     // remove the component.
                     this.remove()
@@ -882,6 +865,25 @@ customElements.define('globular-group-editor', GroupEditor)
  */
 export class GroupView extends HTMLElement {
     // attributes.
+    static get observedAttributes() {
+        return ['closeable'];
+    }
+
+    // The connection callback.
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (name === 'closeable') {
+            if (newValue == "true") {
+                this.closeBtn.style.display = "block"
+                this.closeBtn.addEventListener('click', () => {
+                    if (this.onClose != null) {
+                        this.onClose()
+                    }
+                })
+            } else {
+                this.closeBtn.style.display = "none"
+            }
+        }
+    }
 
     // Create the applicaiton view.
     constructor(group) {
@@ -914,7 +916,6 @@ export class GroupView extends HTMLElement {
 
             #title {
                 font-size: 1rem;
-                margin-left: .5rem;
                 margin-right: .5rem;
                 flex-grow: 1;
             }
@@ -933,11 +934,21 @@ export class GroupView extends HTMLElement {
                 padding-right: 1rem;
             }
             
+            #close-btn {
+                width: 30px;        /* Width of the button */
+                height: 30px;       /* Height of the button */
+                --iron-icon-width: 10px;  /* Width of the icon */
+                --iron-icon-height: 10px; /* Height of the icon */
+            }
         </style>
 
         <div id="content">
-           
-            <span id="title">${group.getName()}</span>
+            <div style="display: flex; flex-direction: row; align-items: center;">
+                <paper-icon-button id="close-btn" icon="icons:close" style="display: none;" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
+                <span id="title">
+                    ${group.getName()}
+                </span>
+            </div>
             <span id="sub-title"> ${group.getDescription()}</span>
             <div style="display: flex; flex-direction: column; padding: .5rem;">
                 <span id="members-count">Members (${group.getMembersList().length})</span>
@@ -972,6 +983,9 @@ export class GroupView extends HTMLElement {
             })
 
         })
+
+        // Get the buttons.
+        this.closeBtn = this.shadowRoot.getElementById('close-btn')
 
 
         this.refresh()

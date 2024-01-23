@@ -5,6 +5,25 @@ import { AppComponent } from "../app/app.component";
 import { Table } from "./table";
 
 
+export function getUserById(id, callback) {
+    let rqst = new GetAccountRqst
+    rqst.setAccountid(id)
+
+    let globule = AppComponent.globules[0]
+    if (globule == null) {
+        displayError("No globule is connected.")
+        return
+    }
+
+    // get the user.
+    globule.resourceService.getAccount(rqst, {})
+        .then((rsp) => {
+            callback(rsp.getAccount())
+        }).catch((err) => {
+            displayError(err)
+        })
+}
+
 // override the the id field to display the profile picture.
 function displayAccountId(a) {
     //return a.id // on image

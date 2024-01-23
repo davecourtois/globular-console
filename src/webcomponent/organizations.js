@@ -1,8 +1,9 @@
-import { CreateOrganizationRqst, DeleteOrganizationRqst, GetOrganizationsRqst, Organization } from "globular-web-client/resource/resource_pb";
+import { AddOrganizationAccountRqst, AddOrganizationGroupRqst, CreateOrganizationRqst, DeleteOrganizationRqst, GetAccountsRqst, GetGroupsRqst, GetOrganizationsRqst, Organization, RemoveOrganizationAccountRqst, RemoveOrganizationGroupRqst } from "globular-web-client/resource/resource_pb";
 import { AppComponent } from "../app/app.component";
 import { displayAuthentication, displayError, displayQuestion } from "./utility.js";
 import { AvatarChanger, getBase64FromImageUrl } from "./image.js";
-import { UserView } from "./users";
+import { UserView, getUserById } from "./users";
+import { GroupView, getGroupById } from "./groups.js";
 
 
 /**
@@ -351,6 +352,13 @@ export class OrganizationEditor extends HTMLElement {
                 background-color: var(--surface-color);
             }
 
+            input {
+                font-family: Arial, Helvetica, sans-serif; /* Primary font */
+                font-size: 16px; /* Readable size */
+                color: #333; /* Font color */
+                /* Add other styles like padding, borders as needed */
+            }
+
             input:focus {
                 outline: none;
                 border: none;
@@ -405,6 +413,22 @@ export class OrganizationEditor extends HTMLElement {
                 }
             }
 
+            #potential-members > globular-user-view:hover {
+                cursor: pointer;
+            }
+
+            .groups, .roles, .applications, .members {
+                display: flex;
+                flex-direction: row;
+                flex-wrap: wrap;
+                border: 1px solid var(--divider-color);
+                border-radius: 3px;
+                min-width: 400px;
+                height: 192px;
+                margin-top: 1rem;
+                overflow-y: auto;
+            }
+
         </style>
 
         <div id="content">
@@ -429,6 +453,54 @@ export class OrganizationEditor extends HTMLElement {
                     <div class="row">
                         <label for="description">Description</label>
                         <input id="description" type="text" name="description" required>
+                    </div>
+                    <div class="row">
+                        <label>
+                            <paper-icon-button id="add-member-btn" icon="icons:add" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
+                            Accounts
+                        </label>
+                        <div class="members">
+                            <slot name="members"></slot>
+                        </div>
+                        <div id="potential-members" class="members" style="margin-left: 1rem; display: none;">
+                            <span style="margin-left: 1rem; margin-right: 1rem;">Potential Members</span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <label>
+                            <paper-icon-button id="add-group-btn" icon="icons:add" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
+                            Groups
+                        </label>
+                        <div class="groups">
+                            <slot name="groups"></slot>
+                        </div>
+                        <div id="potential-groups" class="groups" style="margin-left: 1rem; display: none;">
+                            <span style="margin-left: 1rem; margin-right: 1rem;">Potential Groups</span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <label>
+                            <paper-icon-button id="add-role-btn" icon="icons:add" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
+                            Roles
+                        </label>
+                        <div class="roles">
+                            <slot name="roles"></slot>
+                        </div>
+                        <div id="potential-roles" class="roles" style="margin-left: 1rem; display: none;">
+                            <span style="margin-left: 1rem; margin-right: 1rem;">Potential Roles</span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <label>
+                            <paper-icon-button id="add-application-btn" icon="icons:add" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
+                            Applications
+                        </label>
+                        <div class="applications">
+                            <slot name="applications"></slot>
+                        </div>
+                        <div id="potential-applications" class="applications" style="margin-left: 1rem; display: none;">
+                            <span style="margin-left: 1rem; margin-right: 1rem;">Potential Applications</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -517,6 +589,17 @@ export class OrganizationEditor extends HTMLElement {
             })
         }
 
+        // Add members button.
+        this.addMemberBtn = this.shadowRoot.getElementById('add-member-btn')
+        this.addMemberBtn.addEventListener('click', () => {
+            this.displayPotentialMembers()
+        })
+
+        // Add groups button.
+        this.addGroupBtn = this.shadowRoot.getElementById('add-group-btn')
+        this.addGroupBtn.addEventListener('click', () => {
+            this.displayPotentialGroups()
+        })
     }
 
     cancel() {
@@ -639,9 +722,454 @@ export class OrganizationEditor extends HTMLElement {
             avatar.src = this.organization.getIcon()
         }
 
-        // set the delete button.
+        // I will remove the user views.
+        let members = this.querySelectorAll("globular-user-view")
+        members.forEach(member => {
+            member.remove()
+        });
+
+        // I will remove the group views.
+        let groups = this.querySelectorAll("globular-group-view")
+        groups.forEach(group => {
+            group.remove()
+        });
+
+        // set the members.
+        this.organization.getAccountsList().forEach((member) => {
+            getUserById(member, (user) => {
+                let userView = new UserView(user)
+                userView.slot = 'members'
+                userView.setAttribute('closeable', 'true')
+                this.appendChild(userView)
+
+                // add the event listener.
+                userView.onClose = () => {
+                    // I will ask the user to confirm the deletion.
+                    let question = displayQuestion(`Are you sure you want to remove ${member} from the ${this.organization.getName()}?`,
+                        `<div style="display: flex; justify-content: center; margin-top: 1.5rem;">
+                                <paper-button id="yes-btn" role="button" tabindex="0" aria-disabled="false">Yes</paper-button>
+                                <paper-button id="no-btn" role="button" tabindex="0" aria-disabled="false">No</paper-button>
+                            </div>`)
+
+                    let yesBtn = question.toastElement.querySelector('#yes-btn')
+                    let noBtn = question.toastElement.querySelector('#no-btn')
+
+                    yesBtn.addEventListener("click", () => {
+                        question.toastElement.remove()
+                        // I will be sure the a token is available.
+                        let globule = AppComponent.globules[0]
+                        if (globule == null) {
+                            displayError("No globule is connected.")
+                            return
+                        }
+
+                        if (globule.token == null) {
+                            displayAuthentication(`You need to be authenticated to remove a member from a group.`, globule, () => {
+                                this.removeMember(member, () => {
+                                    this.removeChild(userView)
+                                })
+                            }, err => displayError(err));
+                        } else {
+                            this.removeMember(member, () => {
+                                this.removeMember(member, () => {
+                                    this.removeChild(userView)
+                                })
+                            })
+                        }
+                    })
+
+                    noBtn.addEventListener("click", () => {
+                        question.toastElement.remove()
+                    })
+                }
+            })
+        })
+
+        // set the groups.
+    // set the members.
+    this.organization.getGroupsList().forEach((group) => {
+        getGroupById(group, (g) => {
+            let groupView = new GroupView(g[0])
+            groupView.slot = 'groups'
+            groupView.setAttribute('closeable', 'true')
+            this.appendChild(groupView)
+
+            // add the event listener.
+            groupView.onClose = () => {
+                // I will ask the user to confirm the deletion.
+                let question = displayQuestion(`Are you sure you want to remove ${group} from the ${this.organization.getName()}?`,
+                    `<div style="display: flex; justify-content: center; margin-top: 1.5rem;">
+                        <paper-button id="yes-btn" role="button" tabindex="0" aria-disabled="false">Yes</paper-button>
+                        <paper-button id="no-btn" role="button" tabindex="0" aria-disabled="false">No</paper-button>
+                    </div>`)
+
+                let yesBtn = question.toastElement.querySelector('#yes-btn')
+                let noBtn = question.toastElement.querySelector('#no-btn')
+
+                yesBtn.addEventListener("click", () => {
+                    question.toastElement.remove()
+                    // I will be sure the a token is available.
+                    let globule = AppComponent.globules[0]
+                    if (globule == null) {
+                        displayError("No globule is connected.")
+                        return
+                    }
+
+                    if (globule.token == null) {
+                        displayAuthentication(`You need to be authenticated to remove a group from an organization.`, globule, () => {
+                            this.removeGroup(group, () => {
+                                this.removeChild(groupView)
+                            })
+                        }, err => displayError(err));
+                    } else {
+                        this.removeGroup(group, () => {
+                            this.removeChild(groupView)
+                        })
+                    }
+                })
+
+                noBtn.addEventListener("click", () => {
+                    question.toastElement.remove()
+                })
+            }
+        })
+    }) 
 
     }
+
+    /**
+     * That function display the list of potential organizations members.
+     */
+    displayPotentialMembers() {
+        // first of all i need to get the list of all accounts.
+        let rqst = new GetAccountsRqst
+        rqst.setQuery("{}")
+
+        let globule = AppComponent.globules[0]
+        if (globule == null) {
+            displayError("No globule is connected.")
+            return
+        }
+
+        let stream = globule.resourceService.getAccounts(rqst, {})
+        let accounts = []
+
+        stream.on('data', (rsp) => {
+            accounts = accounts.concat(rsp.getAccountsList())
+        })
+
+        stream.on("status", (status) => {
+            if (status.code == 0) {
+
+                let potentialMembers = this.shadowRoot.getElementById('potential-members')
+                potentialMembers.innerHTML = ""
+                potentialMembers.style.display = "flex"
+
+                // display the potential members.
+                accounts.forEach((account) => {
+                    if (this.organization.getAccountsList().indexOf(account.getId()) == -1) {
+                        let userView = new UserView(account)
+                        userView.slot = 'members'
+                        userView.id = account.getId() + "_potential"
+                        userView.setAttribute('closeable', 'false')
+                        potentialMembers.appendChild(userView)
+
+                        // add the event listener.
+                        userView.addEventListener('click', () => {
+                            // I will be sure the a token is available.
+                            let globule = AppComponent.globules[0]
+                            if (globule == null) {
+                                displayError("No globule is connected.")
+                                return
+                            }
+
+                            if (globule.token == null) {
+                                displayAuthentication(`You need to be authenticated to add a member to an organization.`, globule, () => {
+                                    this.addMember(account.getId(), () => {
+                                        potentialMembers.removeChild(userView)
+                                    })
+
+                                }, err => displayError(err));
+                            } else {
+                                this.addMember(account.getId(), () => {
+                                    potentialMembers.removeChild(userView)
+                                })
+                            }
+                        })
+                    }
+                })
+
+
+            } else {
+                displayError(status.details)
+            }
+        })
+    }
+
+    addMember(member, callback) {
+
+        let globule = AppComponent.globules[0]
+
+        let rqst = new AddOrganizationAccountRqst
+        rqst.setOrganizationid(this.organization.getId())
+        rqst.setAccountid(member)
+
+        // add the member.
+        globule.resourceService.addOrganizationAccount(rqst, { token: globule.token })
+            .then((rsp) => {
+                let evt = new CustomEvent(`refresh_${this.organization.getId()}`, { detail: member })
+                document.dispatchEvent(evt)
+                this.organization.setAccountsList(this.organization.getAccountsList().filter((m) => m != member))
+
+                // push the member to the group.
+                this.organization.getAccountsList().push(member)
+
+                // Set back the organization.
+                this.setOrganization(this.organization)
+
+                callback()
+            }).catch((err) => {
+                displayError(err)
+            })
+
+    }
+
+    /**
+     * 
+     * @param {*} member 
+     * @param {*} callback 
+     */
+    removeMember(member, callback) {
+
+        let globule = AppComponent.globules[0]
+        let rqst = new RemoveOrganizationAccountRqst
+        rqst.setOrganizationid(this.organization.getId())
+        rqst.setAccountid(member)
+
+        // remove the member.
+        globule.resourceService.removeOrganizationAccount(rqst, { token: globule.token })
+            .then((rsp) => {
+
+                let evt = new CustomEvent(`refresh_${this.organization.getId()}`, { detail: member })
+                document.dispatchEvent(evt)
+                this.organization.setAccountsList(this.organization.getAccountsList().filter((m) => m != member))
+
+                // if the potential members is displayed, I will append the member to the potential members.
+                let potentialMembers = this.shadowRoot.getElementById('potential-members')
+                if (potentialMembers.style.display == "flex") {
+                    getUserById(member, (user) => {
+
+                        if (potentialMembers.querySelector(`globular-user-view[id="${member}_potential"]`) != null) {
+                            return
+                        }
+
+                        let userView = new UserView(user)
+                        userView.slot = 'members'
+                        userView.id = member + "_potential"
+                        userView.setAttribute('closeable', 'false')
+
+
+                        potentialMembers.appendChild(userView)
+
+                        // add the event listener.
+                        userView.addEventListener('click', () => {
+                            // I will be sure the a token is available.
+                            let globule = AppComponent.globules[0]
+                            if (globule == null) {
+                                displayError("No globule is connected.")
+                                return
+                            }
+
+                            if (globule.token == null) {
+                                displayAuthentication(`You need to be authenticated to add a member to an organization.`, globule, () => {
+                                    this.addMember(member, () => {
+                                        potentialMembers.removeChild(userView)
+                                    })
+
+                                }, err => displayError(err));
+                            } else {
+                                this.addMember(member, () => {
+                                    potentialMembers.removeChild(userView)
+                                })
+                            }
+                        })
+                    })
+                }
+
+                callback()
+
+            }).catch((err) => {
+                displayError(err)
+            })
+    }
+
+
+    /**
+     * That function display the list of potential group members.
+     */
+    displayPotentialGroups() {
+        // first of all i need to get the list of all accounts.
+        let rqst = new GetGroupsRqst
+        rqst.setQuery("{}")
+
+        let globule = AppComponent.globules[0]
+        if (globule == null) {
+            displayError("No globule is connected.")
+            return
+        }
+
+        let stream = globule.resourceService.getGroups(rqst, {})
+        let groups = []
+
+        stream.on('data', (rsp) => {
+            groups = groups.concat(rsp.getGroupsList())
+        })
+
+        stream.on("status", (status) => {
+            if (status.code == 0) {
+
+                let potentialGroups = this.shadowRoot.getElementById('potential-groups')
+                potentialGroups.innerHTML = ""
+                potentialGroups.style.display = "flex"
+
+                // display the potential members.
+                groups.forEach((group) => {
+                    if (this.organization.getGroupsList().indexOf(group.getId()) == -1) {
+                        let groupView = new GroupView(group)
+                        groupView.slot = 'groups'
+                        groupView.id = group.getId() + "_potential"
+                        groupView.setAttribute('closeable', 'false')
+                        potentialGroups.appendChild(groupView)
+
+                        // add the event listener.
+                        groupView.addEventListener('click', () => {
+                            // I will be sure the a token is available.
+                            let globule = AppComponent.globules[0]
+                            if (globule == null) {
+                                displayError("No globule is connected.")
+                                return
+                            }
+
+                            if (globule.token == null) {
+                                displayAuthentication(`You need to be authenticated to add a member to an organization.`, globule, () => {
+                                    this.addGroup(group.getId(), () => {
+                                        potentialGroups.removeChild(groupView)
+                                    })
+
+                                }, err => displayError(err));
+                            } else {
+                                this.addGroup(group.getId(), () => {
+                                    potentialGroups.removeChild(groupView)
+                                })
+                            }
+                        })
+                    }
+                })
+
+
+            } else {
+                displayError(status.details)
+            }
+        })
+    }
+
+    addGroup(group, callback) {
+
+        let globule = AppComponent.globules[0]
+
+        let rqst = new AddOrganizationGroupRqst
+        rqst.setOrganizationid(this.organization.getId())
+        rqst.setGroupid(group)
+
+        // add the member.
+        globule.resourceService.addOrganizationGroup(rqst, { token: globule.token })
+            .then((rsp) => {
+                let evt = new CustomEvent(`refresh_${this.organization.getId()}`, { detail: group })
+                document.dispatchEvent(evt)
+                this.organization.setGroupsList(this.organization.getGroupsList().filter((m) => m != group))
+
+                // push the member to the group.
+                this.organization.getGroupsList().push(group)
+
+                // Set back the organization.
+                this.setOrganization(this.organization)
+
+                callback()
+            }).catch((err) => {
+                displayError(err)
+            })
+
+    }
+
+    /**
+     * 
+     * @param {*} group 
+     * @param {*} callback 
+     */
+    removeGroup(group, callback) {
+
+        let globule = AppComponent.globules[0]
+        let rqst = new RemoveOrganizationGroupRqst
+        rqst.setOrganizationid(this.organization.getId())
+        rqst.setGroupid(group)
+
+        // remove the member.
+        globule.resourceService.removeOrganizationGroup(rqst, { token: globule.token })
+            .then((rsp) => {
+
+                let evt = new CustomEvent(`refresh_${this.organization.getId()}`, { detail: group })
+                document.dispatchEvent(evt)
+                this.organization.setGroupsList(this.organization.getGroupsList().filter((m) => m != group))
+
+                // if the potential groups is displayed, I will append the group to the potential groups.
+                let potentialGroups = this.shadowRoot.getElementById('potential-groups')
+                if (potentialGroups.style.display == "flex") {
+                    getGroupById(group, (g) => {
+
+                        if (potentialGroups.querySelector(`globular-group-view[id="${group}_potential"]`) != null) {
+                            return
+                        }
+
+                        let groupView = new GroupView(g[0])
+                        groupView.slot = 'groups'
+                        groupView.id = group + "_potential"
+                        groupView.setAttribute('closeable', 'false')
+
+
+                        potentialGroups.appendChild(groupView)
+
+                        // add the event listener.
+                        groupView.addEventListener('click', () => {
+                            // I will be sure the a token is available.
+                            let globule = AppComponent.globules[0]
+                            if (globule == null) {
+                                displayError("No globule is connected.")
+                                return
+                            }
+
+                            if (globule.token == null) {
+                                displayAuthentication(`You need to be authenticated to add a member to an organization.`, globule, () => {
+                                    this.addGroup(group, () => {
+                                        potentialGroups.removeChild(groupView)
+                                    })
+
+                                }, err => displayError(err));
+                            } else {
+                                this.addGroup(group, () => {
+                                    potentialGroups.removeChild(groupView)
+                                })
+                            }
+                        })
+                    })
+                }
+
+                callback()
+
+            }).catch((err) => {
+                displayError(err)
+            })
+    }
+
 }
 
 customElements.define('globular-organization-editor', OrganizationEditor)
