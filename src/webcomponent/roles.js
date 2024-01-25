@@ -541,7 +541,7 @@ export class RoleEditor extends HTMLElement {
                 }, err => displayError(err));
         } else {
             let rqst = new DeleteRoleRqst
-            rqst.setRole(this.role_.getId())
+            rqst.setRoleid(this.role_.getId())
 
             // delete the role.
             globule.resourceService.deleteRole(rqst, { token: globule.token })
@@ -632,6 +632,12 @@ export class RoleEditor extends HTMLElement {
         let members = this.querySelectorAll('globular-user-view[slot="members"]')
         members.forEach((member) => {
             this.removeChild(member)
+        })
+
+        // I will get organization view from the slot.
+        let organizations = this.querySelectorAll('globular-organization-view[slot="organizations"]')
+        organizations.forEach((organization) => {
+            this.removeChild(organization)
         })
 
         this.role_ = role
