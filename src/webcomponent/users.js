@@ -872,7 +872,7 @@ export class UserView extends HTMLElement {
 
     // attributes.
     static get observedAttributes() {
-        return ['closeable'];
+        return ['closeable', 'summary'];
     }
 
     // The connection callback.
@@ -888,6 +888,10 @@ export class UserView extends HTMLElement {
             } else {
                 this.closeBtn.style.display = "none"
             }
+        }
+        
+        if (name === 'summary') {
+            
         }
     }
 

@@ -259,6 +259,7 @@ export class GroupsManager extends HTMLElement {
         // display the groups.
         groups.forEach((group) => {
             let groupView = new GroupView(group)
+            groupView.setAttribute('summary', 'false')
             groupView.slot = 'groups'
             groupsDiv.appendChild(groupView)
             // add the event listener.
@@ -431,16 +432,6 @@ export class GroupEditor extends HTMLElement {
                         <div id="potential-members" class="members" style="margin-left: 1rem; display: none;">
                             <span style="margin-left: 1rem; margin-right: 1rem;">Potential Members</span>
                         </div>
-                    </div>
-                    <div class="row">
-                        <label>
-                            <paper-icon-button id="add-organization-btn" icon="icons:add" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
-                            Organizations
-                        </label>
-                        <div class="organizations">
-                            <slot name="organizations"></slot>
-                        </div>
-
                     </div>
                 </div>
             </div>
@@ -855,6 +846,8 @@ export class GroupEditor extends HTMLElement {
             })
     }
 
+
+
 }
 
 customElements.define('globular-group-editor', GroupEditor)
@@ -866,7 +859,7 @@ customElements.define('globular-group-editor', GroupEditor)
 export class GroupView extends HTMLElement {
     // attributes.
     static get observedAttributes() {
-        return ['closeable'];
+        return ['closeable', 'addable', 'summary'];
     }
 
     // The connection callback.
@@ -881,6 +874,25 @@ export class GroupView extends HTMLElement {
                 })
             } else {
                 this.closeBtn.style.display = "none"
+            }
+        } else if (name === 'summary') {
+            // I will display the summary.
+            let details = this.shadowRoot.getElementById('details')
+            if (newValue == "true") {
+                details.opened = false
+            } else {
+                details.opened = true
+            }
+        } else if (name === 'addable') {
+            if (newValue == "true") {
+                this.addBtn.style.display = "block"
+                this.addBtn.addEventListener('click', () => {
+                    if (this.onAdd != null) {
+                        this.onAdd()
+                    }
+                })
+            } else {
+                this.addBtn.style.display = "none"
             }
         }
     }
@@ -918,6 +930,8 @@ export class GroupView extends HTMLElement {
                 font-size: 1rem;
                 margin-right: .5rem;
                 flex-grow: 1;
+                text-decoration: underline;
+                line-height: 1.5rem;
             }
 
             #sub-title {
@@ -934,33 +948,61 @@ export class GroupView extends HTMLElement {
                 padding-right: 1rem;
             }
             
-            #close-btn {
+            #close-btn, #add-btn {
                 width: 30px;        /* Width of the button */
                 height: 30px;       /* Height of the button */
                 --iron-icon-width: 10px;  /* Width of the icon */
                 --iron-icon-height: 10px; /* Height of the icon */
             }
+
+            #details {
+                display: flex;
+                flex-direction: column;
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            iron-collapse {
+                --iron-collapse-transition-duration: 0.3s; /* Smooth transition */
+            }
+            
+            /* When iron-collapse is closed */
+           iron-collapse[aria-hidden="true"] {
+                max-height: 0; /* Ensures it takes minimal space */
+                width: 0; /* Ensures it takes minimal space */
+                overflow: hidden; /* Ensures content does not overflow */
+                padding: 0; /* Remove padding when closed */
+            }
+
         </style>
 
         <div id="content">
             <div style="display: flex; flex-direction: row; align-items: center;">
                 <paper-icon-button id="close-btn" icon="icons:close" style="display: none;" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
+                <paper-icon-button id="add-btn" icon="icons:add" style="display: none;" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
                 <span id="title">
                     ${group.getName()}
                 </span>
             </div>
-            <span id="sub-title"> ${group.getDescription()}</span>
-            <div style="display: flex; flex-direction: column; padding: .5rem;">
-                <span id="members-count">Members (${group.getMembersList().length})</span>
-                <div class="members">
-                    <slot name="members"></slot>
+            <iron-collapse id="details">
+                <span id="sub-title"> ${group.getDescription()}</span>
+                <div style="display: flex; flex-direction: column; padding: .5rem;">
+                    <span id="members-count">Members (${group.getMembersList().length})</span>
+                    <div class="members">
+                        <slot name="members"></slot>
+                    </div>
                 </div>
-
-                <span>Organizations (${group.getOrganizationsList().length})</span>
-                <slot name="organizations"></slot>
-            </div>
+            </iron-collapse>
         </div>
         `
+
+        // When the user click on the title span i will display the details.
+        let collapse_btn = this.shadowRoot.querySelector("#title")
+        let collapse_panel = this.shadowRoot.querySelector("#details")
+        collapse_btn.onclick = (evt) => {
+            evt.stopPropagation();
+            collapse_panel.toggle();
+        }
 
         // give the focus to the input.
         let content = this.shadowRoot.querySelector("#content")
@@ -986,6 +1028,8 @@ export class GroupView extends HTMLElement {
 
         // Get the buttons.
         this.closeBtn = this.shadowRoot.getElementById('close-btn')
+        this.addBtn = this.shadowRoot.getElementById('add-btn')
+
 
 
         this.refresh()

@@ -12,7 +12,7 @@ import { GroupView, getGroupById } from "./groups.js";
  * @param {*} callback 
  * @returns 
  */
-function getOrganizationById(organizationId, callback) {
+export function getOrganizationById(organizationId, callback) {
 
     let globule = AppComponent.globules[0]
     if (globule == null) {
@@ -478,30 +478,6 @@ export class OrganizationEditor extends HTMLElement {
                             <span style="margin-left: 1rem; margin-right: 1rem;">Potential Groups</span>
                         </div>
                     </div>
-                    <div class="row">
-                        <label>
-                            <paper-icon-button id="add-role-btn" icon="icons:add" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
-                            Roles
-                        </label>
-                        <div class="roles">
-                            <slot name="roles"></slot>
-                        </div>
-                        <div id="potential-roles" class="roles" style="margin-left: 1rem; display: none;">
-                            <span style="margin-left: 1rem; margin-right: 1rem;">Potential Roles</span>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <label>
-                            <paper-icon-button id="add-application-btn" icon="icons:add" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
-                            Applications
-                        </label>
-                        <div class="applications">
-                            <slot name="applications"></slot>
-                        </div>
-                        <div id="potential-applications" class="applications" style="margin-left: 1rem; display: none;">
-                            <span style="margin-left: 1rem; margin-right: 1rem;">Potential Applications</span>
-                        </div>
-                    </div>
                 </div>
             </div>
                 <div id="actions" style="display: flex; flex-direction: row; margin-top: 1rem;">
@@ -740,6 +716,7 @@ export class OrganizationEditor extends HTMLElement {
                 let userView = new UserView(user)
                 userView.slot = 'members'
                 userView.setAttribute('closeable', 'true')
+                userView.setAttribute('summary', 'true')
                 this.appendChild(userView)
 
                 // add the event listener.
@@ -786,54 +763,55 @@ export class OrganizationEditor extends HTMLElement {
         })
 
         // set the groups.
-    // set the members.
-    this.organization.getGroupsList().forEach((group) => {
-        getGroupById(group, (g) => {
-            let groupView = new GroupView(g[0])
-            groupView.slot = 'groups'
-            groupView.setAttribute('closeable', 'true')
-            this.appendChild(groupView)
+        this.organization.getGroupsList().forEach((group) => {
+            getGroupById(group, (g) => {
+                let groupView = new GroupView(g[0])
+                groupView.slot = 'groups'
+                groupView.setAttribute('closeable', 'true')
+                groupView.setAttribute('addable', 'false')
+                groupView.setAttribute('summary', 'true')
+                this.appendChild(groupView)
 
-            // add the event listener.
-            groupView.onClose = () => {
-                // I will ask the user to confirm the deletion.
-                let question = displayQuestion(`Are you sure you want to remove ${group} from the ${this.organization.getName()}?`,
-                    `<div style="display: flex; justify-content: center; margin-top: 1.5rem;">
+                // add the event listener.
+                groupView.onClose = () => {
+                    // I will ask the user to confirm the deletion.
+                    let question = displayQuestion(`Are you sure you want to remove ${group} from the ${this.organization.getName()}?`,
+                        `<div style="display: flex; justify-content: center; margin-top: 1.5rem;">
                         <paper-button id="yes-btn" role="button" tabindex="0" aria-disabled="false">Yes</paper-button>
                         <paper-button id="no-btn" role="button" tabindex="0" aria-disabled="false">No</paper-button>
                     </div>`)
 
-                let yesBtn = question.toastElement.querySelector('#yes-btn')
-                let noBtn = question.toastElement.querySelector('#no-btn')
+                    let yesBtn = question.toastElement.querySelector('#yes-btn')
+                    let noBtn = question.toastElement.querySelector('#no-btn')
 
-                yesBtn.addEventListener("click", () => {
-                    question.toastElement.remove()
-                    // I will be sure the a token is available.
-                    let globule = AppComponent.globules[0]
-                    if (globule == null) {
-                        displayError("No globule is connected.")
-                        return
-                    }
+                    yesBtn.addEventListener("click", () => {
+                        question.toastElement.remove()
+                        // I will be sure the a token is available.
+                        let globule = AppComponent.globules[0]
+                        if (globule == null) {
+                            displayError("No globule is connected.")
+                            return
+                        }
 
-                    if (globule.token == null) {
-                        displayAuthentication(`You need to be authenticated to remove a group from an organization.`, globule, () => {
+                        if (globule.token == null) {
+                            displayAuthentication(`You need to be authenticated to remove a group from an organization.`, globule, () => {
+                                this.removeGroup(group, () => {
+                                    this.removeChild(groupView)
+                                })
+                            }, err => displayError(err));
+                        } else {
                             this.removeGroup(group, () => {
                                 this.removeChild(groupView)
                             })
-                        }, err => displayError(err));
-                    } else {
-                        this.removeGroup(group, () => {
-                            this.removeChild(groupView)
-                        })
-                    }
-                })
+                        }
+                    })
 
-                noBtn.addEventListener("click", () => {
-                    question.toastElement.remove()
-                })
-            }
+                    noBtn.addEventListener("click", () => {
+                        question.toastElement.remove()
+                    })
+                }
+            })
         })
-    }) 
 
     }
 
@@ -1039,6 +1017,7 @@ export class OrganizationEditor extends HTMLElement {
                         groupView.slot = 'groups'
                         groupView.id = group.getId() + "_potential"
                         groupView.setAttribute('closeable', 'false')
+                        groupView.setAttribute('addable', 'true')
                         potentialGroups.appendChild(groupView)
 
                         // add the event listener.
@@ -1134,6 +1113,7 @@ export class OrganizationEditor extends HTMLElement {
                         groupView.slot = 'groups'
                         groupView.id = group + "_potential"
                         groupView.setAttribute('closeable', 'false')
+                        groupView.setAttribute('addable', 'true')
 
 
                         potentialGroups.appendChild(groupView)
@@ -1182,7 +1162,7 @@ export class OrganizationView extends HTMLElement {
 
     // attributes.
     static get observedAttributes() {
-        return ['closeable'];
+        return ['closeable', 'summary', 'addable'];
     }
 
     // The connection callback.
@@ -1197,6 +1177,27 @@ export class OrganizationView extends HTMLElement {
                 })
             } else {
                 this.closeBtn.style.display = "none"
+            }
+        } else if (name === 'summary') {
+
+            // I will display the summary.
+            let details = this.shadowRoot.getElementById('details')
+            if (newValue == "true") {
+                details.opened = false
+            } else {
+                details.opened = true
+            }
+
+        } else if (name === 'addable') {
+            if (newValue == "true") {
+                this.addBtn.style.display = "block"
+                this.addBtn.addEventListener('click', () => {
+                    if (this.onAdd != null) {
+                        this.onAdd()
+                    }
+                })
+            } else {
+                this.addBtn.style.display = "none"
             }
         }
     }
@@ -1233,6 +1234,7 @@ export class OrganizationView extends HTMLElement {
             #name {
                 font-size: 1rem;
                 flex-grow: 1;
+                text-decoration: underline;
             }
 
             #close-btn {
@@ -1242,18 +1244,51 @@ export class OrganizationView extends HTMLElement {
                 --iron-icon-height: 10px; /* Height of the icon */
             }
 
+            #details {
+                display: flex;
+                flex-direction: column;
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            iron-collapse {
+                --iron-collapse-transition-duration: 0.3s; /* Smooth transition */
+            }
+            
+            /* When iron-collapse is closed */
+           iron-collapse[aria-hidden="true"] {
+                max-height: 0; /* Ensures it takes minimal space */
+                width: 0; /* Ensures it takes minimal space */
+                overflow: hidden; /* Ensures content does not overflow */
+                padding: 0; /* Remove padding when closed */
+            }
+
+            #close-btn, #add-btn {
+                width: 30px;
+                height: 30px;
+                --iron-icon-width: 10px;
+                --iron-icon-height: 10px;
+            }
+
         </style>
         <div id="content">
             <img src="${organization.getIcon()}"></img>
             <div style="display: flex; flex-direction: row; align-items: center;">
                 <paper-icon-button id="close-btn" icon="icons:close" style="display: none;" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
+                <paper-icon-button id="add-btn" icon="icons:add" style="display: none;" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
                 <span id="name">${organization.getName()}</span>
             </div>
+            <iron-collapse id="details">
+                <div style="margin-top: 1rem; margin-bottom: 1rem;">
+                    <span style="font-size: 0.8rem;">${organization.getDescription()}</span>
+                </div>
+            </iron-collapse>
         </div>
         `
 
         // Get the buttons.
         this.closeBtn = this.shadowRoot.getElementById('close-btn')
+        this.addBtn = this.shadowRoot.getElementById('add-btn')
 
     }
 }
