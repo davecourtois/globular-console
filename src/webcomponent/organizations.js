@@ -229,6 +229,7 @@ export class OrganizationsManager extends HTMLElement {
         getOrganizations((organizations) => {
             organizations.forEach(organization => {
                 let organizationView = new OrganizationView(organization)
+                organizationView.setAttribute("summary", "false")
                 organizationView.slot = "organizations"
                 this.appendChild(organizationView)
 
@@ -1187,7 +1188,6 @@ export class OrganizationView extends HTMLElement {
             } else {
                 details.opened = true
             }
-
         } else if (name === 'addable') {
             if (newValue == "true") {
                 this.addBtn.style.display = "block"
@@ -1270,27 +1270,119 @@ export class OrganizationView extends HTMLElement {
                 --iron-icon-height: 10px;
             }
 
+            .groups, .members {
+                display: flex;
+                flex-direction: row;
+                flex-wrap: wrap;
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            
+
         </style>
         <div id="content">
+            
             <img src="${organization.getIcon()}"></img>
-            <div style="display: flex; flex-direction: row; align-items: center;">
+            <div style="display: flex; flex-direction: row; align-items: flex-start;">
                 <paper-icon-button id="close-btn" icon="icons:close" style="display: none;" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
                 <paper-icon-button id="add-btn" icon="icons:add" style="display: none;" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
                 <span id="name">${organization.getName()}</span>
             </div>
+
             <iron-collapse id="details">
                 <div style="margin-top: 1rem; margin-bottom: 1rem;">
                     <span style="font-size: 0.8rem;">${organization.getDescription()}</span>
+                </div>
+                <div style="display: flex; flex-direction: column; padding: .5rem;">
+                    <span id="members-count">Members (${organization.getAccountsList().length})</span>
+                    <div class="members">
+                        <slot name="members"></slot>
+                    </div>
+                </div>
+                <div style="display: flex; flex-direction: column; padding: .5rem;">
+                <span id="group-count">Groups (${organization.getGroupsList().length})</span>
+                    <div class="groups">
+                        <slot name="groups"></slot>
+                    </div>
                 </div>
             </iron-collapse>
         </div>
         `
 
+        this.organization = organization
+
         // Get the buttons.
         this.closeBtn = this.shadowRoot.getElementById('close-btn')
         this.addBtn = this.shadowRoot.getElementById('add-btn')
 
+
+        // When the user click on the title span i will display the details.
+        let collapse_btn = this.shadowRoot.querySelector("#name")
+        let collapse_panel = this.shadowRoot.querySelector("#details")
+        collapse_btn.onclick = (evt) => {
+            evt.stopPropagation();
+            collapse_panel.toggle();
+        }
+
+        // give the focus to the input.
+        let content = this.shadowRoot.querySelector("#content")
+        content.addEventListener('click', () => {
+            document.dispatchEvent(new CustomEvent('currentGroupIdChanged', { detail: this.organization.getId() }))
+        })
+
+        // Now I will subscribe to the memberAdded event.
+        document.addEventListener(`refresh_${organization.getId()}`, (evt) => {
+
+            getOrganizationById(organization.getId(), (organization) => {
+    
+                this.organization = organization
+                let membersCount = this.shadowRoot.getElementById('members-count')
+                membersCount.innerHTML = `Members (${this.organization.getAccountsList().length})`
+                this.refresh()
+            })
+
+        })
+
+        // Get the buttons.
+        this.closeBtn = this.shadowRoot.getElementById('close-btn')
+        this.addBtn = this.shadowRoot.getElementById('add-btn')
+
+
+
+        this.refresh()
     }
+
+    refresh() {
+
+        this.innerHTML = ""
+
+        // set the name.
+        let name = this.shadowRoot.getElementById('name')
+        name.innerHTML = this.organization.getName()
+
+        // add the members...
+        let members = this.organization.getAccountsList()
+        members.forEach((member) => {
+            getUserById(member, (user) => {
+                let userView = new UserView(user)
+                userView.id = member + "_view"
+                userView.slot = 'members'
+                this.appendChild(userView)
+            })
+        })
+
+        // add the groups...
+        let groups = this.organization.getGroupsList()
+        groups.forEach((group) => {
+            getGroupById(group, (g) => {
+                let groupView = new GroupView(g[0])
+                groupView.id = group + "_view"
+                groupView.slot = 'groups'
+                this.appendChild(groupView)
+            })
+        })
+    }
+
 }
 
 customElements.define('globular-organization-view', OrganizationView)

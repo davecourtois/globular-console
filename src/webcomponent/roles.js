@@ -1,8 +1,9 @@
-import { CreateRoleRqst, DeleteRoleRqst, GetAccountsRqst, Role, UpdateRoleRqst, AddAccountRoleRqst, RemoveAccountRoleRqst, GetRolesRqst, GetOrganizationsRqst, AddOrganizationAccountRqst, AddOrganizationRoleRqst, RemoveOrganizationRoleRqst } from "globular-web-client/resource/resource_pb";
+import { CreateRoleRqst, DeleteRoleRqst, GetAccountsRqst, Role, UpdateRoleRqst, AddAccountRoleRqst, RemoveAccountRoleRqst, GetRolesRqst, GetOrganizationsRqst, AddOrganizationAccountRqst, AddOrganizationRoleRqst, RemoveOrganizationRoleRqst, RemoveRoleActionRqst, AddRoleActionsRqst } from "globular-web-client/resource/resource_pb";
 import { AppComponent } from "../app/app.component";
 import { displayAuthentication, displayError, displayQuestion } from "./utility";
 import { UserView, getUserById } from "./users";
 import { OrganizationView, getOrganizationById } from "./organizations";
+import { GetAllActionsRequest } from "globular-web-client/services_manager/services_manager_pb";
 
 
 
@@ -21,10 +22,13 @@ export function getRoleById(id, callback) {
 
     stream.on('data', (rsp) => {
         roles = roles.concat(rsp.getRolesList())
+
+
     })
 
     stream.on("status", (status) => {
         if (status.code == 0) {
+            // remove the admin role and the guest role from the list.
             callback(roles)
         } else {
             displayError(status.details)
@@ -187,6 +191,11 @@ export class RolesManager extends HTMLElement {
 
         stream.on("status", (status) => {
             if (status.code == 0) {
+                // remove the admin role and the guest role from the list.
+                roles = roles.filter((r) => {
+                    return r.getName() != "admin" && r.getName() != "guest"
+                })
+
                 this.displayroles(roles)
             } else {
                 displayError(status.details)
@@ -208,6 +217,8 @@ export class RolesManager extends HTMLElement {
             editor.slot = 'role'
             this.appendChild(editor)
         }
+
+
 
         // I will dispatch event currentRoleIdChanged
         this.currentRoleId = "new-role"
@@ -328,7 +339,7 @@ export class RoleEditor extends HTMLElement {
                 /* Add other styles like padding, borders as needed */
             }
 
-            .organizations, .members {
+            .organizations, .members, .actions {
                 display: flex;
                 flex-direction: row;
                 flex-wrap: wrap;
@@ -339,6 +350,24 @@ export class RoleEditor extends HTMLElement {
                 margin-top: 1rem;
                 overflow-y: auto;
             }
+
+            .actions {
+                margin-top: 1rem;
+                margin-right: 1rem;
+                height: 300px;
+                flex-direction: column;
+                position: relative;
+                min-width: 500px;
+            }
+
+            #potential-actions, #actions {
+                position: absolute;
+                top: 0px;
+                left: 0px;
+                right: 0px;
+                overflow-y: auto;
+            }
+
 
             input {
                 margin-top: 1rem;
@@ -406,6 +435,20 @@ export class RoleEditor extends HTMLElement {
                 cursor: pointer;
             }
 
+            .Role-form{
+                display: flex;
+                flex-direction: row;
+            }
+
+            @media only screen and (max-width: 640px) {
+                .Role-form{
+                    flex-direction: column;
+
+                }
+            }
+
+            
+
         </style>
 
         <div id="content">
@@ -447,9 +490,27 @@ export class RoleEditor extends HTMLElement {
                             <span style="margin-left: 1rem; margin-right: 1rem;">Potential Organization</span>
                         </div>
                     </div>
+                    <div class="row" >
+                        <label>
+                            <paper-icon-button id="add-action-btn" icon="icons:add" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
+                            <span style="margin-left: 1rem; margin-right: 1rem;">Actions</span>
+                        </label>
+             
+                        <div class="actions">
+                            <div id="actions">
+                                <slot name="actions"></slot>
+                            </div>
+                        </div>
+
+                        <div class="actions" style="display: none;">
+                            <div id="potential-actions">
+                                <slot name="potential-actions"></slot>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div id="actions" style="display: flex; flex-direction: row; margin-top: 1rem;">
+            <div id="actions-buttons" style="display: flex; flex-direction: row; margin-top: 1rem;">
                 <paper-button id="delete-btn" role="button" tabindex="0" aria-disabled="false">Delete</paper-button>
                 <span style="flex-grow: 1;"></span>
                 <paper-button id="save-btn" role="button" tabindex="0" aria-disabled="false">Save</paper-button>
@@ -510,13 +571,31 @@ export class RoleEditor extends HTMLElement {
         // Add members button.
         this.addMemberBtn = this.shadowRoot.getElementById('add-member-btn')
         this.addMemberBtn.addEventListener('click', () => {
+            if (this.role_.getId() == "") {
+                displayError("You need to save the role before adding a member.")
+                return
+            }
             this.displayPotentialMembers()
         })
 
         // Add organizations button.
         this.addOrganizationBtn = this.shadowRoot.getElementById('add-organization-btn')
         this.addOrganizationBtn.addEventListener('click', () => {
+            if (this.role_.getId() == "") {
+                displayError("You need to save the role before adding an organization.")
+                return
+            }
             this.displayPotentialOrganizations()
+        })
+
+        // Add actions button.
+        this.addActionBtn = this.shadowRoot.getElementById('add-action-btn')
+        this.addActionBtn.addEventListener('click', () => {
+            if (this.role_.getId() == "") {
+                displayError("You need to save the role before adding an action.")
+                return
+            }
+            this.displayPotentialActions()
         })
 
     }
@@ -627,6 +706,11 @@ export class RoleEditor extends HTMLElement {
 
     // set the role.
     setRole(role) {
+        this.innerHTML = ""
+
+        if (role.getId() == "") {
+            this.shadowRoot.querySelector('#potential-actions').parentNode.style.display = "none"
+        }
 
         // I will get user view from the slot.
         let members = this.querySelectorAll('globular-user-view[slot="members"]')
@@ -757,6 +841,97 @@ export class RoleEditor extends HTMLElement {
                 }
             })
         })
+
+
+        // set the actions.
+        this.role_.getActionsList().sort().forEach((action) => {
+            this.addActionView(action)
+        })
+    }
+
+    /**
+     * 
+     * @param {*} action 
+     */
+    addActionView(action) {
+
+        let actionView = new ActionView(action)
+        actionView.slot = 'actions'
+        actionView.setAttribute('closeable', 'true')
+        actionView.id = action + "_action"
+        this.appendChild(actionView)
+
+        // add the event listener.
+        actionView.onClose = () => {
+
+            // I will ask the user to confirm the deletion.
+            let question = displayQuestion(`Are you sure you want to remove</br><span style="font-style: italic;">${action}</span></br>from the ${this.role_.getName()}?`,
+                `<div style="display: flex; justify-content: center; margin-top: 1.5rem;">
+                        <paper-button id="yes-btn" role="button" tabindex="0" aria-disabled="false">Yes</paper-button>
+                        <paper-button id="no-btn" role="button" tabindex="0" aria-disabled="false">No</paper-button>
+                    </div>`)
+
+            let yesBtn = question.toastElement.querySelector('#yes-btn')
+            let noBtn = question.toastElement.querySelector('#no-btn')
+
+            yesBtn.addEventListener("click", () => {
+                question.toastElement.remove()
+                // I will be sure the a token is available.
+                let globule = AppComponent.globules[0]
+                if (globule == null) {
+                    displayError("No globule is connected.")
+                    return
+                }
+
+                if (globule.token == null) {
+                    displayAuthentication(`You need to be authenticated to remove an action from a role.`, globule, () => {
+                        this.removeAction(action, () => {
+                            this.removeChild(actionView)
+                        })
+                    }, err => displayError(err));
+                } else {
+                    this.removeAction(action, () => {
+                        this.removeChild(actionView)
+                    })
+                }
+            })
+
+            noBtn.addEventListener("click", () => {
+                question.toastElement.remove()
+            })
+        }
+    }
+
+    removeAction(action, callback) {
+
+        let globule = AppComponent.globules[0]
+        let rqst = new RemoveRoleActionRqst
+        rqst.setRoleid(this.role_.getId())
+        rqst.setAction(action)
+
+        // remove the action.
+        globule.resourceService.removeRoleAction(rqst, { token: globule.token })
+            .then((rsp) => {
+
+                let evt = new CustomEvent(`refresh_${this.role_.getId()}`, { detail: action })
+                document.dispatchEvent(evt)
+                this.role_.setActionsList(this.role_.getActionsList().filter((m) => m != action))
+
+                // if the potential actions is displayed, I will append the action to the potential actions.
+                let potentialActions = this.shadowRoot.getElementById('potential-actions')
+                if (potentialActions.style.display == "flex") {
+                    if (potentialActions.querySelector(`globular-action-view[id="${action}_action"]`) != null) {
+                        return
+                    }
+
+                    this.addPotentialActionView(action)
+                }
+
+                callback()
+
+            }).catch((err) => {
+                displayError(err)
+            })
     }
 
     /**
@@ -1092,7 +1267,113 @@ export class RoleEditor extends HTMLElement {
             })
     }
 
+    /**
+     * 
+     * @param {*} action 
+     * @param {*} callback 
+     */
+    addPotentialActionView(action, callback) {
+        let actionView = new ActionView(action)
+        actionView.slot = 'actions'
+        actionView.id = action + "_potential"
+        actionView.setAttribute('closeable', 'false')
+        actionView.setAttribute('addable', 'true')
 
+        let div = this.shadowRoot.getElementById('potential-actions')
+        div.appendChild(actionView)
+
+        // add the event listener.
+        actionView.addEventListener('click', () => {
+            // I will be sure the a token is available.
+            let globule = AppComponent.globules[0]
+            if (globule == null) {
+                displayError("No globule is connected.")
+                return
+            }
+
+            if (globule.token == null) {
+                displayAuthentication(`You need to be authenticated to add an action to a role.`, globule, () => {
+                    this.addAction(action, () => {
+                        div.removeChild(actionView)
+                    })
+
+                }, err => displayError(err));
+            } else {
+                this.addAction(action, () => {
+                    div.removeChild(actionView)
+                })
+            }
+        })
+    }
+
+    /**
+     * Add action to a role.
+     * @param {*} action 
+     * @param {*} callback 
+     */
+    addAction(action, callback) {
+
+        let globule = AppComponent.globules[0]
+
+        let rqst = new AddRoleActionsRqst
+        rqst.setRoleid(this.role_.getId())
+        let actions = this.role_.getActionsList()
+        actions.push(action)
+        rqst.setActionsList(actions)
+
+        // add the action.
+        globule.resourceService.addRoleActions(rqst, { token: globule.token })
+            .then((rsp) => {
+                let evt = new CustomEvent(`refresh_${this.role_.getId()}`, { detail: action })
+                document.dispatchEvent(evt)
+                this.role_.setActionsList(this.role_.getActionsList().filter((m) => m != action))
+
+                // push the action in the list of role.
+                this.role_.getActionsList().push(action)
+
+                // Set back the role.
+                this.setRole(this.role_)
+
+
+
+                callback()
+            }).catch((err) => {
+                displayError(err)
+            })
+    }
+
+    /**
+     * Display the list of potential actions.
+     */
+    displayPotentialActions() {
+
+        let div = this.shadowRoot.getElementById('potential-actions')
+        div.innerHTML = ""
+        div.parentNode.style.display = "flex"
+
+        // Now i will get the list of all actions.
+        let rqst = new GetAllActionsRequest
+
+        let globule = AppComponent.globules[0]
+
+        if (globule == null) {
+            displayError("No globule is connected.")
+            return
+        }
+
+        globule.servicesManagerService.getAllActions(rqst, {})
+            .then((rsp) => {
+                let actions = rsp.getActionsList()
+                actions.sort().forEach((action) => {
+                    if (this.role_.getActionsList().indexOf(action) == -1) {
+                        this.addPotentialActionView(action)
+                    }
+                })
+
+            }).catch((err) => {
+                displayError(err)
+            })
+    }
 }
 
 customElements.define('globular-role-editor', RoleEditor)
@@ -1176,12 +1457,14 @@ export class RoleView extends HTMLElement {
                 flex-grow: 1;
                 text-decoration: underline;
                 line-height: 1.5rem;
+                text-align: center;
             }
 
             #sub-title {
                 font-size: 0.8rem;
                 margin-left: .5rem;
                 margin-right: .5rem;
+                text-align: center;
             }
 
             .organizations, .members {
@@ -1333,3 +1616,100 @@ export class RoleView extends HTMLElement {
 customElements.define('globular-role-view', RoleView)
 
 
+// The action view component.
+export class ActionView extends HTMLElement {
+    // attributes.
+    static get observedAttributes() {
+        return ['closeable', 'addable'];
+    }
+
+    // the attribute changed callback.
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (name === 'closeable') {
+            if (newValue == "true") {
+                this.closeBtn.style.display = "block"
+                this.closeBtn.addEventListener('click', () => {
+                    if (this.onClose != null) {
+                        this.onClose()
+                    }
+                })
+            } else {
+                this.closeBtn.style.display = "none"
+            }
+        } else if (name === 'addable') {
+            if (newValue == "true") {
+                this.addBtn.style.display = "block"
+                this.addBtn.addEventListener('click', () => {
+                    if (this.onAdd != null) {
+                        this.onAdd()
+                    }
+                })
+            } else {
+                this.addBtn.style.display = "none"
+            }
+        }
+    }
+
+
+    // Create the applicaiton view.
+    constructor(action) {
+
+
+        super()
+
+        // Set the shadow dom.
+        this.attachShadow({ mode: 'open' });
+
+
+        // Innitialisation of the layout.
+        this.shadowRoot.innerHTML = `
+        <style>
+        /* Any custom styling for your code block */
+        @import url('./styles.css');
+
+        #content {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+        }
+
+                    
+        #close-btn, #add-btn {
+            display: none;
+            width: 30px;        /* Width of the button */
+            height: 30px;       /* Height of the button */
+            --iron-icon-width: 10px;  /* Width of the icon */
+            --iron-icon-height: 10px; /* Height of the icon */
+        }
+
+        </style>
+
+        <div id="content">
+            <paper-icon-button id="close-btn" icon="icons:close" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
+            <paper-icon-button id="add-btn" icon="icons:add" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
+            <span id="">${action}</span>
+        </div>
+        `
+
+        // Get the buttons.
+        this.closeBtn = this.shadowRoot.getElementById('close-btn')
+        this.addBtn = this.shadowRoot.getElementById('add-btn')
+
+        // Add the event listeners.
+        this.closeBtn.addEventListener('click', () => {
+            if (this.onClose != null) {
+                this.onClose()
+            }
+        })
+
+        this.addBtn.addEventListener('click', () => {
+            if (this.onAdd != null) {
+                this.onAdd()
+            }
+        })
+    }
+
+}
+
+
+customElements.define('globular-action-view', ActionView)
