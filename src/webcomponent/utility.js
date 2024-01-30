@@ -3,6 +3,40 @@ import { AuthenticateRqst } from 'globular-web-client/authentication/authenticat
 import Toastify from 'toastify-js';
 
 
+/**
+ * Format file size from bytes to Gb, Mb or Kb...
+ * @param {*} f_size 
+ * @returns 
+ */
+export function getFileSizeString(f_size) {
+
+    // In case of already converted values...
+    if (typeof f_size === 'string' || f_size instanceof String) {
+        return f_size
+    }
+
+    let size = ""
+
+    if (f_size > 1024) {
+        if (f_size > 1024 * 1024) {
+            if (f_size > 1024 * 1024 * 1024) {
+                let fileSize = f_size / (1024 * 1024 * 1024);
+                size = fileSize.toFixed(2) + " GB";
+            } else {
+                let fileSize = f_size / (1024 * 1024);
+                size = fileSize.toFixed(2) + " MB";
+            }
+        } else {
+            let fileSize = f_size / 1024;
+            size = fileSize.toFixed(2) + " KB";
+        }
+    } else {
+        size = f_size + " bytes";
+    }
+
+    return size
+}
+
 export function secondsToTime(secs) {
     var hours = Math.floor(secs / (60 * 60));
 

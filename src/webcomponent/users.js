@@ -3,6 +3,7 @@ import { AvatarChanger, getBase64FromImageUrl } from "./image";
 import { displayAuthentication, displayError, displayQuestion, displaySuccess } from "./utility";
 import { AppComponent } from "../app/app.component";
 import { Table } from "./table";
+import { DiskSpaceManager} from "./diskSpace";
 
 
 export function getUserById(id, callback) {
@@ -60,7 +61,7 @@ export class UsersManager extends HTMLElement {
         this.attachShadow({ mode: 'open' });
 
         // Test if the current user id is set.
-        this.currentUserId = null
+        this.currentUserId = ""
 
         // Innitialisation of the layout.
         this.shadowRoot.innerHTML = `
@@ -129,7 +130,9 @@ export class UsersManager extends HTMLElement {
                 <span class="field" slot="fields" field="firstName">First Name</span>
                 <span class="field" slot="fields" field="lastName">Last Name</span>
                 <span class="field" slot="fields" field="userEmail">Email</span>
+  
             </globular-table>
+
         </div>
         `
 
@@ -302,6 +305,7 @@ export class UsersManager extends HTMLElement {
 
         } else if (userId != null && userId != "") {
             this.currentUserId = userId
+
             // Get the user.
             let rqst = new GetAccountRqst()
             rqst.setAccountid(userId)
@@ -499,6 +503,7 @@ export class UserEditor extends HTMLElement {
                         <label for="password"><span style="color: red; margin-right: .5rem;">*</span>Confirm Password</label>
                         <input id="confirm-password" type="password" label="confirm-password" value=""></input>
                     </div>
+           
                 </div>
                 <div class="table">
                     <div class="row">
@@ -515,6 +520,12 @@ export class UserEditor extends HTMLElement {
                         <label for="middle">Middle Name</label>
                         <input id="middle" label="middle" value="${this.account.getMiddle()}"></input>
                     </div>
+
+                    <div class="row" style="padding-top: 1rem;">
+                        <label for="name">Disk Space</label>
+                        <globular-disk-space-manager editable="true"></globular-disk-space-manager>
+                    </div>
+
                 </div>
             </div>
 
@@ -526,6 +537,9 @@ export class UserEditor extends HTMLElement {
             </div>
 
         </div>`
+
+        // set the disk space manager account
+        this.shadowRoot.querySelector("globular-disk-space-manager").setAccount(this.account)
 
         // here I will set the action on avatar-changer when the image is changed.
         let avatarChanger = this.shadowRoot.querySelector("#avatar-changer")
@@ -840,6 +854,10 @@ export class UserEditor extends HTMLElement {
             }else{
                 this.shadowRoot.querySelector("#delete-btn").style.display = "none"
             }
+
+            // set the disk space manager account
+            this.shadowRoot.querySelector("globular-disk-space-manager").setAccount(account)
+            
         } else {
             this.shadowRoot.querySelector("#name").value = ""
             this.shadowRoot.querySelector("#email").value = ""
