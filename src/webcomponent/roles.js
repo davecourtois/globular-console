@@ -1628,22 +1628,12 @@ export class ActionView extends HTMLElement {
         if (name === 'closeable') {
             if (newValue == "true") {
                 this.closeBtn.style.display = "block"
-                this.closeBtn.addEventListener('click', () => {
-                    if (this.onClose != null) {
-                        this.onClose()
-                    }
-                })
             } else {
                 this.closeBtn.style.display = "none"
             }
         } else if (name === 'addable') {
             if (newValue == "true") {
                 this.addBtn.style.display = "block"
-                this.addBtn.addEventListener('click', () => {
-                    if (this.onAdd != null) {
-                        this.onAdd()
-                    }
-                })
             } else {
                 this.addBtn.style.display = "none"
             }
@@ -1696,17 +1686,19 @@ export class ActionView extends HTMLElement {
         this.addBtn = this.shadowRoot.getElementById('add-btn')
 
         // Add the event listeners.
-        this.closeBtn.addEventListener('click', () => {
+        this.closeBtn.onclick = (evt) => {
+            evt.stopPropagation();
             if (this.onClose != null) {
                 this.onClose()
             }
-        })
+        }
 
-        this.addBtn.addEventListener('click', () => {
+        this.addBtn.onclick = (evt) => {
+            evt.stopPropagation();
             if (this.onAdd != null) {
                 this.onAdd()
             }
-        })
+        }
     }
 
 }
