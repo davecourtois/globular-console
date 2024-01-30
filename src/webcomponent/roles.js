@@ -1,4 +1,4 @@
-import { CreateRoleRqst, DeleteRoleRqst, GetAccountsRqst, Role, UpdateRoleRqst, AddAccountRoleRqst, RemoveAccountRoleRqst, GetRolesRqst, GetOrganizationsRqst, AddOrganizationAccountRqst, AddOrganizationRoleRqst, RemoveOrganizationRoleRqst, RemoveRoleActionRqst, AddRoleActionsRqst } from "globular-web-client/resource/resource_pb";
+import { CreateRoleRqst, DeleteRoleRqst, GetAccountsRqst, Role, UpdateRoleRqst, AddAccountRoleRqst, RemoveAccountRoleRqst, GetRolesRqst, GetOrganizationsRqst, AddOrganizationRoleRqst, RemoveOrganizationRoleRqst, RemoveRoleActionRqst, AddRoleActionsRqst } from "globular-web-client/resource/resource_pb";
 import { AppComponent } from "../app/app.component";
 import { displayAuthentication, displayError, displayQuestion } from "./utility";
 import { UserView, getUserById } from "./users";
@@ -1283,7 +1283,7 @@ export class RoleEditor extends HTMLElement {
         div.appendChild(actionView)
 
         // add the event listener.
-        actionView.addEventListener('click', () => {
+        actionView.onAdd = () =>{
             // I will be sure the a token is available.
             let globule = AppComponent.globules[0]
             if (globule == null) {
@@ -1303,7 +1303,7 @@ export class RoleEditor extends HTMLElement {
                     div.removeChild(actionView)
                 })
             }
-        })
+        }
     }
 
     /**

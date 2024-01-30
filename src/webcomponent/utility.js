@@ -3,6 +3,20 @@ import { AuthenticateRqst } from 'globular-web-client/authentication/authenticat
 import Toastify from 'toastify-js';
 
 
+
+export function fireResize() {
+    if (document.createEvent) {
+        // W3C
+        var ev = document.createEvent('Event');
+        ev.initEvent('resize', true, true);
+        window.dispatchEvent(ev);
+    } else {
+        // IE
+        var event = document.createEventObject();
+        document.fireEvent("onresize", event);
+    }
+}
+
 /**
  * Format file size from bytes to Gb, Mb or Kb...
  * @param {*} f_size 

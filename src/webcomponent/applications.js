@@ -5,6 +5,9 @@ import { GetAllActionsRequest } from "globular-web-client/services_manager/servi
 import { displayError, displayAuthentication, displayQuestion } from "./utility"
 import { getBase64FromImageUrl } from "./image"
 import getUuidByString from "uuid-by-string"
+import { EditableStringList } from "./list"
+import { get } from "@polymer/polymer/lib/utils/path"
+
 
 export function getApplicationsById(id, callback) {
 
@@ -148,6 +151,10 @@ export class ApplicationsManager extends HTMLElement {
                 let applicationView = new ApplicationView(application)
                 applicationView.setAttribute('closeable', 'false')
                 applicationView.setAttribute('summary', 'true')
+
+                applicationView.style.marginRight = "1rem"
+                applicationView.style.marginBottom = "1rem"
+
                 applicationView.slot = "applications"
 
                 // Set the on close callback.
@@ -385,6 +392,10 @@ export class ApplicationEditor extends HTMLElement {
                         <label>Description</label>
                         <input id="description" name="description"></input>
                     </div>
+                    <div class="row">
+                    <label>Keywords</label>
+                        <globular-editable-string-list id="keywords"></globular-editable-string-list>
+                    </div>
                     <div class="row" >
                         <label>
                             <paper-icon-button id="add-action-btn" icon="icons:add" role="button" tabindex="0" aria-disabled="false"></paper-icon-button>
@@ -395,13 +406,13 @@ export class ApplicationEditor extends HTMLElement {
                                 <slot name="actions"></slot>
                             </div>
                         </div>
-
                         <div class="actions" style="display: none;">
                             <div id="potential-actions">
                                 <slot name="potential-actions"></slot>
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
             <div id="actions-buttons" style="display: flex; flex-direction: row; margin-top: 1rem;">
@@ -568,10 +579,14 @@ export class ApplicationEditor extends HTMLElement {
         let alias = this.shadowRoot.getElementById('alias')
         this.application.setAlias(alias.value)
 
+        // set the keywords.
+        let keywords = this.shadowRoot.getElementById('keywords')
+        this.application.setKeywordsList(keywords.getItems())
+
         // use the update application request.
         let rqst = new UpdateApplicationRqst
         rqst.setApplicationid(this.application.getId())
-        let str = `{"$set":{"name": "${this.application.getName()}", "description": "${this.application.getDescription()}", "alias": "${this.application.getAlias()}", "icon": "${this.application.getIcon()}"}}`
+        let str = `{"$set":{"name": "${this.application.getName()}", "description": "${this.application.getDescription()}", "alias": "${this.application.getAlias()}", "icon": "${this.application.getIcon()}", "keywords": ${JSON.stringify(this.application.getKeywordsList())} }}`
         rqst.setValues(str)
 
         // update the application.
@@ -627,6 +642,10 @@ export class ApplicationEditor extends HTMLElement {
         alias.addEventListener('input', () => {
             this.application.setAlias(alias.value)
         })
+
+        // set the keywords.
+        let keywords = this.shadowRoot.getElementById('keywords')
+        keywords.setItems(application.getKeywordsList())
 
         // set the icon.
         let avatar = this.shadowRoot.querySelector("#avatar")
@@ -926,6 +945,26 @@ export class ApplicationView extends HTMLElement {
 
         // Get the buttons.
         this.closeBtn = this.shadowRoot.getElementById('close-btn')
+
+
+        // Add the event listeners.
+        // `refresh_${this.application.getId()}`
+        document.addEventListener(`refresh_${application.getId()}`, (e) => {
+            getApplicationsById(application.getId(), (applications) => {
+                // set the icon
+                let avatar = this.shadowRoot.querySelector("img")
+                avatar.src = applications[0].getIcon()
+
+                // set the name.
+                let name = this.shadowRoot.getElementById('name')
+                name.innerText = applications[0].getName()
+
+                // set the application.
+                this.application = applications[0]
+            
+            })
+        })
+
 
     }
 }
