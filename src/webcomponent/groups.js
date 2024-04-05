@@ -1,4 +1,4 @@
-import { AddGroupMemberAccountRqst, CreateGroupRqst, DeleteGroupRqst, GetAccountRqst, GetAccountsRqst, GetGroupsRqst, Group, RemoveGroupMemberAccountRqst, UpdateGroupRqst } from "globular-web-client/resource/resource_pb";
+import { AddGroupMemberAccountRqst, CreateGroupRqst, DeleteGroupRqst, GetAccountsRqst, GetGroupsRqst, Group, RemoveGroupMemberAccountRqst, UpdateGroupRqst } from "globular-web-client/resource/resource_pb";
 import { AppComponent } from "../app/app.component";
 import { displayAuthentication, displayError, displayQuestion } from "./utility";
 import { UserView, getUserById } from "./users";

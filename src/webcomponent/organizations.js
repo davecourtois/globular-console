@@ -43,7 +43,7 @@ export function getOrganizationById(organizationId, callback) {
  * @param {*} callback 
  * @returns 
  */
-function getOrganizations(callback) {
+export function getOrganizations(callback) {
 
     let globule = AppComponent.globules[0]
     if (globule == null) {
