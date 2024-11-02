@@ -149,6 +149,11 @@ export class GeneralConfigurationManager extends HTMLElement {
          <div style="display: flex; flex-direction: column;">    
       `
 
+      // Check if the alternative domains are defined.
+      if(this.globule.config.AlternateDomains == undefined){
+         this.globule.config.AlternateDomains = []
+      }
+
       for (let i = 0; i < this.globule.config.AlternateDomains.length; i++) {
          alternative_domains_fragment += `
          <div class="value">${this.globule.config.AlternateDomains[i]}</div>

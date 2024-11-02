@@ -24,7 +24,7 @@ export function getAllPeers(globule, callback, errorCallback) {
     rqst.setQuery("{}")
     let peers = [];
 
-    let stream = globule.resourceService.getPeers(rqst, { domain: Model.domain, address: Model.address, application: Model.application, token: localStorage.getItem("user_token") });
+    let stream = globule.resourceService.getPeers(rqst, { });
 
     // Get the stream and set event on it...
     stream.on("data", (rsp) => {

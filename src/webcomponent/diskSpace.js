@@ -1,6 +1,7 @@
 import { GetSubjectAllocatedSpaceRqst, GetSubjectAvailableSpaceRqst, SetSubjectAllocatedSpaceRqst, SubjectType } from "globular-web-client/rbac/rbac_pb";
 import { displayAuthentication, displayError, getCoords, getFileSizeString } from "./utility";
 import { AppComponent } from "../app/app.component";
+import { flatMap } from "rxjs";
 
 
 /**
@@ -225,6 +226,7 @@ export class DiskSpaceManager extends HTMLElement {
       .then((rsp) => {
         // Here I will return the value with it
         this.allocated_space = rsp.getAllocatedSpace()
+        console.log("allocated space for ", id,  rsp.getAllocatedSpace())
         callback();
       })
       .catch((err) => {

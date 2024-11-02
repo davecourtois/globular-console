@@ -381,7 +381,12 @@ export class AvatarChanger extends HTMLElement {
     //  The image will be on the same domain, so we can use relative paths
     let globule = AppComponent.globules[0]
     if (globule) {
-      let url = window.location.protocol + '//' + globule.config.Name + "." + globule.config.Domain
+      let url = window.location.protocol + '//'
+      if(globule.config.Domain == 'localhost'){
+        url += globule.config.Domain
+      }else{
+        url += globule.config.Name + "." + globule.config.Domain
+      }
 
       if (globule.config.Protocol == 'https') {
         url = 'https://' + globule.config.Name + "." + globule.config.Domain + ":" + globule.config.PortHttps

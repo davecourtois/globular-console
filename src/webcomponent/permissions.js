@@ -14,7 +14,9 @@ import { getRoleById } from "./roles.js";
 import { FindOneRqst } from "globular-web-client/persistence/persistence_pb";
 import { AppComponent } from "../app/app.component";
 import { GetConversationRequest } from "globular-web-client/conversation/conversation_pb.js";
-import { Globular } from "globular-web-client";
+import { getApplicationsById } from "./applications.js";
+import { ApplicationInfo } from "./informations.js";
+import { getAccounts } from "./users.js";
 
 /**
  * Sample empty component
@@ -26,6 +28,8 @@ export class PermissionsManager extends HTMLElement {
     constructor(globule) {
         super()
 
+        // Set the globule.
+        this.globule = globule
 
         // Set the shadow dom.
         this.attachShadow({ mode: 'open' });
@@ -404,7 +408,6 @@ export class PermissionsManager extends HTMLElement {
         rqst.setPath(path)
 
         this.globule.rbacService.getResourcePermissions(rqst, {
-            token: localStorage.getItem("user_token"),
             domain: this.globule.config.Domain,
         }).then(rsp => {
             let permissions = rsp.getPermissions()
@@ -778,7 +781,7 @@ export class PermissionPanel extends HTMLElement {
 
         // Here I will set the content of the collapse panel.
         // Now the account list.
-        Account.getAccounts("{}",
+        getAccounts("{}",
             accounts => {
 
                 // I will get the account object whit the given id.
@@ -1502,9 +1505,12 @@ export class PermissionsViewer extends HTMLElement {
                 })
             } else if (subject.type == "application") {
                 // Set application div.
-                let applicationDiv = this.createApplicationDiv(Application.getApplicationInfo(subject.id))
-                subjectCell.innerHTML = ""
-                subjectCell.appendChild(applicationDiv)
+                getApplicationsById(subject.id, application => {
+                    let applicationDiv = this.createApplicationDiv(Application.getApplicationInfo(subject.id))
+                    subjectCell.innerHTML = ""
+                    subjectCell.appendChild(applicationDiv)
+                })
+
             } else if (subject.type == "group") {
                 Group.getGroup(subject.id, g => {
                     let groupDiv = this.createGroupDiv(g)
@@ -1563,7 +1569,6 @@ function getWebpage(id, application, globule, callback, errorCallback) {
     // call persist data
     globule.persistenceService
         .findOne(rqst, {
-            token: token,
             domain: domain
         })
         .then(rsp => {
@@ -1598,14 +1603,9 @@ function getApplication(id, globule, callback, errorCallback) {
     let rqst = new GetApplicationsRqst
 
     let path = id
-    if (id.indexOf("@") != -1) {
-        address = id.split("@")[1] // take the domain given with the id.
-        id = id.split("@")[0]
-    }
-
     rqst.setQuery(`{"_id":"${id}"}`)
 
-    let stream = globule.resourceService.getApplications(rqst, { domain: globule.config.Domain, token: localStorage.getItem("user_token") })
+    let stream = globule.resourceService.getApplications(rqst, { domain: globule.config.Domain })
     let applications = [];
 
     stream.on("data", (rsp) => {
@@ -1651,7 +1651,7 @@ function getBlog(id, globule, callback, errorCallback) {
     let rqst = new GetBlogPostsRequest
     rqst.setUuidsList([id])
 
-    let stream = globule.blogService.getBlogPosts(rqst, { domain: globule.config.Domain, token: localStorage.getItem("user_token") })
+    let stream = globule.blogService.getBlogPosts(rqst, { domain: globule.config.Domain})
     let blogPosts = [];
 
     stream.on("data", (rsp) => {
@@ -1719,7 +1719,7 @@ function getConversation(id, globule, callback, errorCallback) {
     }
 
     rqst.setId(id)
-    globule.conversationService.getConversation(rqst, { domain: globule.config.Domain, token: localStorage.getItem("user_token") })
+    globule.conversationService.getConversation(rqst, { domain: globule.config.Domain })
         .then(rsp => {
 
             let c = rsp.getConversation()
@@ -1839,7 +1839,7 @@ function getPackage(id, globule, callback, errorCallback) {
 
     rqst.setQuery(q);
 
-    let stream = globule.resourceService.getPackagesDescriptor(rqst, { domain: globule.config.Domain, token: localStorage.getItem("user_token") })
+    let stream = globule.resourceService.getPackagesDescriptor(rqst, { domain: globule.config.Domain })
 
     let descriptors = [];
 
@@ -1955,16 +1955,16 @@ export class ResourcesPermissionsManager extends HTMLElement {
         this.globule = globule
 
         // append list of different resources by type.
-        this.appendResourcePermissions("application",this.globule, getApplication)
-        //this.appendResourcePermissions("blog",this.globule, getBlog)
-        //this.appendResourcePermissions("conversation",this.globule, getConversation)
-        //this.appendResourcePermissions("domain",this.globule, getDomain)
-        //this.appendResourcePermissions("file",this.globule, getFile) // to slow when the number of file is high...
-        //this.appendResourcePermissions("group",this.globule, getGroup)
-        //this.appendResourcePermissions("organization",this.globule, getOrganization)
-        //this.appendResourcePermissions("package",this.globule, getPackage)
-        //this.appendResourcePermissions("role",this.globule, getRole)
-        //this.appendResourcePermissions("webpage",this.globule, getWebpage)
+        this.appendResourcePermissions("application", getApplication)
+        //this.appendResourcePermissions("blog", getBlog)
+        //this.appendResourcePermissions("conversation", getConversation)
+        //this.appendResourcePermissions("domain", getDomain)
+        //this.appendResourcePermissions("file", getFile) // to slow when the number of file is high...
+        //this.appendResourcePermissions("group", getGroup)
+        //this.appendResourcePermissions("organization", getOrganization)
+        //this.appendResourcePermissions("package", getPackage)
+        //this.appendResourcePermissions("role" getRole)
+        //this.appendResourcePermissions("webpage", getWebpage)
     }
 
 
@@ -2125,8 +2125,8 @@ export class ResourcesPermissionsType extends HTMLElement {
             let count = 0
             permissions.forEach(p => {
                 if (this.getResource) {
-                    this.getResource(p.getPath(), (r) => {
-                        let r_ = new ResourcePermissions(r)
+                    this.getResource(p.getPath(), this.globule, (r) => {
+                        let r_ = new ResourcePermissions(r, this.globule)
                         r_.id = "_" + getUuidByString(p.getPath())
                         this.appendChild(r_)
                         count++
@@ -2179,8 +2179,7 @@ export class ResourcesPermissionsType extends HTMLElement {
 
         let stream = this.globule.rbacService.getResourcePermissionsByResourceType(rqst,
             {
-                domain: this.globule.config.Domain,
-                token: localStorage.getItem("user_token")
+                domain: this.globule.config.Domain
             });
 
         // Get the stream and set event on it...

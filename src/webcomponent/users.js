@@ -3,7 +3,7 @@ import { AvatarChanger, getBase64FromImageUrl } from "./image";
 import { displayAuthentication, displayError, displayQuestion, displaySuccess } from "./utility";
 import { AppComponent } from "../app/app.component";
 import { Table } from "./table";
-import { DiskSpaceManager} from "./diskSpace";
+import { DiskSpaceManager } from "./diskSpace";
 
 
 export function getUserById(id, callback) {
@@ -23,6 +23,35 @@ export function getUserById(id, callback) {
         }).catch((err) => {
             displayError(err)
         })
+}
+
+export function getAccounts(query, callback, errorCallback){
+
+    // Get the users.
+    let rqst = new GetAccountsRqst
+    rqst.setQuery(query)
+
+    let globule = AppComponent.globules[0]
+    if (globule == null) {
+        displayError("No globule is connected.")
+        return
+    }
+
+    let stream = globule.resourceService.getAccounts(rqst, {})
+
+    let accounts = []
+
+    stream.on('data', (rsp) => {
+        accounts = accounts.concat(rsp.getAccountsList())
+    })
+
+    stream.on("status", (status) => {
+        if (status.code == 0) {
+           callback(accounts)
+        } else {
+            errorCallback(status.details)
+        }
+    })
 }
 
 // override the the id field to display the profile picture.
@@ -194,30 +223,10 @@ export class UsersManager extends HTMLElement {
             this.setCurrentUser(this.currentUserId)
         }
 
-        // Get the users.
-        let rqst = new GetAccountsRqst
-        rqst.setQuery("{}")
-
-        let globule = AppComponent.globules[0]
-        if (globule == null) {
-            displayError("No globule is connected.")
-            return
-        }
-
-        let stream = globule.resourceService.getAccounts(rqst, {})
-
-        let accounts = []
-
-        stream.on('data', (rsp) => {
-            accounts = accounts.concat(rsp.getAccountsList())
-        })
-
-        stream.on("status", (status) => {
-            if (status.code == 0) {
-                this.displayUsers(accounts)
-            } else {
-                displayError(status.details)
-            }
+        getAccounts("{}", (accounts) => {
+            this.displayUsers(accounts)
+        }, (error) => {
+            displayError(error)
         })
     }
 
@@ -848,16 +857,22 @@ export class UserEditor extends HTMLElement {
             this.shadowRoot.querySelector("#confirm-password").parentNode.style.display = "none"
             this.shadowRoot.querySelector("#confirm-password").value = "**********"
             this.shadowRoot.querySelector("#password").setAttribute("disabled", "true")
+            
+            if(account.getProfilepicture() != ""){
             this.shadowRoot.querySelector("#avatar").src = account.getProfilepicture()
+            } else {
+                this.shadowRoot.querySelector("#avatar").src = "https://www.w3schools.com/howto/img_avatar.png"
+            }
+
             if (account.getId() != "sa") {
                 this.shadowRoot.querySelector("#delete-btn").style.display = "block"
-            }else{
+            } else {
                 this.shadowRoot.querySelector("#delete-btn").style.display = "none"
             }
 
             // set the disk space manager account
             this.shadowRoot.querySelector("globular-disk-space-manager").setAccount(account)
-            
+
         } else {
             this.shadowRoot.querySelector("#name").value = ""
             this.shadowRoot.querySelector("#email").value = ""
@@ -907,9 +922,9 @@ export class UserView extends HTMLElement {
                 this.closeBtn.style.display = "none"
             }
         }
-        
+
         if (name === 'summary') {
-            
+
         }
     }
 

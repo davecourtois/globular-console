@@ -29,7 +29,7 @@ let scanFct = (row) => {
     refreshBtn.style.display = "none"
 
     // I will test if the address is valid.
-    let url = window.location.protocol + address + "/config"
+    let url = window.location.protocol + "//" + address + "/config"
 
     // I will test if the globule is already in the list.
     let globule = new Globular(url, () => {

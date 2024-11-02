@@ -109,7 +109,6 @@ export class ClusterManager extends HTMLElement {
 
             let globule = this.globules[id]
 
-
             // be sure a token exist for the master.
             if (globule.token == null) {
                 displayAuthentication("Enter the sa password of " + globule.config.Name, globule,
@@ -457,6 +456,9 @@ export class ClusterManager extends HTMLElement {
                     return
                 }
                 // Set the master.
+                this.master = globule
+            } else if (globule.config.DNS == "" || globule.config.DNS == null) {
+                // Set the master to the first globule found...
                 this.master = globule
             }
         }
