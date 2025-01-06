@@ -478,6 +478,8 @@ export class SystemMonitor extends HTMLElement {
         let address =  window.location.protocol + "//"
         if(window.location.hostname == "localhost"){
             address += this.globule.config.LocalIpAddress
+        }else{
+            address += window.location.hostname
         }
         
         address += "/stats"
